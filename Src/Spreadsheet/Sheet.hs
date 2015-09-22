@@ -19,6 +19,8 @@ import qualified Data.Set as Set
 
 import qualified Data.Aeson                  as JSON
 
+import Src.Lambda.Lambda
+
 readonly :: Attr Element Bool
 readonly = fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
 
@@ -109,7 +111,10 @@ getSheetIn (r,c) sh
 
 getSheetCell :: Pos -> Sheet -> Cell
 getSheetCell pos sh
-  = Map.findWithDefault (Right "") pos (sheetCells sh)
+  = Map.findWithDefault emptyCell pos (sheetCells sh)
+
+emptyCell :: Cell
+emptyCell = Cell "" Nothing
 
 cells2Ins :: TVar Sheet -> UI ()
 cells2Ins ctxSh
@@ -121,11 +126,9 @@ cells2Ins ctxSh
 cell2In :: Map Pos Cell -> Pos -> Element -> UI ()
 cell2In cs pos elm
   = do
-  let cCnt = Map.findWithDefault (Right "") pos cs
+  let (Cell text _) = Map.findWithDefault emptyCell pos cs
   oldVal <- get UI.value elm
-  case cCnt of
-    Left expr -> unless (show expr == oldVal) $ element elm # set UI.value (show expr) >> return ()
-    Right str -> unless (str == oldVal) $ element elm # set UI.value str >> return ()
+  unless (text == oldVal) $ element elm # set UI.value text >> return ()
 
 offsetSheet :: TVar Sheet -> Pos -> UI ()
 offsetSheet ctxSh pos
@@ -142,3 +145,12 @@ scrollSheet ctxSh dPos
   = do
   sh <- liftIO $ atomically $ readTVar ctxSh
   offsetSheet ctxSh (dPos `posAdd` sheetOffset sh)
+
+
+cellMod :: String -> Pos -> Sheet -> Sheet
+cellMod cCnt cPos sh
+  = let mC    = Map.lookup cPos (sheetCells sh)
+        lExpr = undefined -- parseExpr cCnt
+        c'    = Cell cCnt lExpr
+        sh'   = undefined
+    in undefined
