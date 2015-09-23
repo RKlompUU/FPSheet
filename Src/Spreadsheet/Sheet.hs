@@ -19,6 +19,8 @@ import qualified Data.Set as Set
 
 import qualified Data.Aeson                  as JSON
 
+import Debug.Trace
+
 import Src.Lambda.Lambda
 
 readonly :: Attr Element Bool
@@ -146,11 +148,36 @@ scrollSheet ctxSh dPos
   sh <- liftIO $ atomically $ readTVar ctxSh
   offsetSheet ctxSh (dPos `posAdd` sheetOffset sh)
 
+updateCells :: Map Pos Cell -> Map Pos Cell
+updateCells cs
+  = Map.foldrWithKey updateCell cs cs
+
+updateCell :: Pos -> Cell -> Map Pos Cell -> Map Pos Cell
+updateCell p c cs
+  = let lExpr' = parseExpr (Src.Spreadsheet.SheetType.text c) >>= return . nf . toIdInt . (\v -> trace ("Test: " ++ show (expandCellRefs cs v)) (expandCellRefs cs v))
+        c'    = c { lExpr = lExpr' }
+    in case (Map.lookup p cs >>= \cOld -> return $ lExpr cOld == lExpr') of
+        -- Evaluated expr hasn't changed
+        Just True -> Map.insert p c' cs
+        -- Evaluated expr has changed, update the entire sheet
+        _ -> let cs' = trace ("lExpr': " ++ show lExpr') Map.insert p c' cs
+             in updateCells cs'
 
 cellMod :: String -> Pos -> Sheet -> Sheet
 cellMod cCnt cPos sh
-  = let mC    = Map.lookup cPos (sheetCells sh)
-        lExpr = undefined -- parseExpr cCnt
-        c'    = Cell cCnt lExpr
-        sh'   = undefined
-    in undefined
+  = let mC     = Map.lookup cPos (sheetCells sh)
+        lExpr' = parseExpr cCnt >>= return . nf . toIdInt
+        c'     = Cell cCnt lExpr'
+    in sh { sheetCells = updateCell cPos c' (sheetCells sh) }
+
+
+expandCellRefs :: Map Pos Cell -> LC String -> LC String
+expandCellRefs cs e
+  = let refPs = scanCellRefs e
+    in trace ("cellRefs: " ++ show refPs) addCellRefs (mapMaybe (\p -> (,) <$> pure (cRefPos2Var p) <*> (Map.lookup p cs >>= lExpr >>= return . fromIdInt)) refPs) e
+
+scanCellRefs :: LC v -> [Pos]
+scanCellRefs (CVar p)    = [p]
+scanCellRefs (Lam _ e)   = scanCellRefs e
+scanCellRefs (App e1 e2) = scanCellRefs e1 ++ scanCellRefs e2
+scanCellRefs _ = []
