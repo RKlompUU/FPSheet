@@ -27,6 +27,7 @@ readonly :: Attr Element Bool
 readonly = fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
 
 
+-- Returns the offset of a position towards a box, if the position is inside the box Nothing is returned
 isInBox :: Pos -> (Pos,Pos) -> Maybe Pos
 isInBox (r,c) ((rL, cL), (rH, cH))
   = let rOffset = if r < rL
@@ -44,7 +45,14 @@ isInBox (r,c) ((rL, cL), (rH, cH))
         else Just (rOffset,cOffset)
 
 
+grabUpdatedCells :: Map Pos Cell -> Map Pos Cell
+grabUpdatedCells = Map.filter uFlag
 
+resetUpdateFields :: Map Pos Cell -> Map Pos Cell
+resetUpdateFields = Map.map (\c -> c {uFlag = False})
+
+posSubtr :: Pos -> Pos -> Pos
+posSubtr (r1,c1) (r2,c2) = (r1-r2,c1-c2)
 
 posAdd :: Pos -> Pos -> Pos
 posAdd (r1,c1) (r2,c2) = (r1+r2,c1+c2)
@@ -116,7 +124,7 @@ getSheetCell pos sh
   = Map.findWithDefault emptyCell pos (sheetCells sh)
 
 emptyCell :: Cell
-emptyCell = Cell "" Nothing
+emptyCell = Cell "" Nothing False
 
 cells2Ins :: TVar Sheet -> UI ()
 cells2Ins ctxSh
@@ -128,7 +136,7 @@ cells2Ins ctxSh
 cell2In :: Map Pos Cell -> Pos -> Element -> UI ()
 cell2In cs pos elm
   = do
-  let (Cell text _) = Map.findWithDefault emptyCell pos cs
+  let (Cell text _ _) = Map.findWithDefault emptyCell pos cs
   oldVal <- get UI.value elm
   unless (text == oldVal) $ element elm # set UI.value text >> return ()
 
@@ -156,18 +164,18 @@ updateCell :: Pos -> Cell -> Map Pos Cell -> Map Pos Cell
 updateCell p c cs
   = let lExpr' = parseExpr (Src.Spreadsheet.SheetType.text c) >>= return . nf . toIdInt . (\v -> trace ("Test: " ++ show (expandCellRefs cs v)) (expandCellRefs cs v))
         c'    = c { lExpr = lExpr' }
-    in case (Map.lookup p cs >>= \cOld -> return $ lExpr cOld == lExpr') of
+    in case (Map.lookup p cs >>= \cOld -> return $ trace ("old: " ++ show (lExpr cOld) ++ ",, new: " ++ show lExpr') lExpr cOld == lExpr') of
         -- Evaluated expr hasn't changed
-        Just True -> Map.insert p c' cs
+        Just True -> trace ("No change") Map.insert p c' cs
         -- Evaluated expr has changed, update the entire sheet
-        _ -> let cs' = trace ("lExpr': " ++ show lExpr') Map.insert p c' cs
+        _ -> let cs' = trace ("changed lExpr': " ++ show lExpr') Map.insert p (c' {uFlag = True})  cs
              in updateCells cs'
 
 cellMod :: String -> Pos -> Sheet -> Sheet
 cellMod cCnt cPos sh
   = let mC     = Map.lookup cPos (sheetCells sh)
         lExpr' = parseExpr cCnt >>= return . nf . toIdInt
-        c'     = Cell cCnt lExpr'
+        c'     = Cell cCnt lExpr' False
     in sh { sheetCells = updateCell cPos c' (sheetCells sh) }
 
 
