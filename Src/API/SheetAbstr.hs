@@ -4,6 +4,10 @@ module Src.API.SheetAbstr where
 
 type Pos = (Int,Int)
 
+-- Annotated text (with for example explicit information about cells that are referred to)
+--class AnnText t where
+
+
 class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v where
   updateEvals :: s -> s
   getCell :: s -> Pos -> Maybe c
@@ -11,7 +15,6 @@ class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v wher
   --derefExpr :: s -> e -> e
   --derefRef :: s -> r -> c
   --refCell :: s -> Pos -> r
-
 
 class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   evalCell :: c -> c
