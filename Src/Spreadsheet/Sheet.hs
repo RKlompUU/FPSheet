@@ -1,6 +1,8 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
 module Src.Spreadsheet.Sheet
       ( module Src.Spreadsheet.Sheet
       , module Src.Spreadsheet.SheetType
+      , module Src.Lambda.Lambda
       ) where
 
 import Src.Spreadsheet.SheetType
@@ -17,13 +19,59 @@ import qualified Data.Set as Set
 
 import qualified Data.Aeson                  as JSON
 
+import Src.API.SheetAbstr
+
 import Debug.Trace
 
 import Src.Lambda.Lambda
 
+
+type CellCntTy = LExpr String
+
+instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String where
+  updateEvals s =
+    case Map.foldrWithKey updateEval (Right s) s of
+      Left s' -> updateEvals s'
+      Right s' -> s'
+  getCell s p = Map.lookup p s
+  setCell s p c = Map.insert p c s
+  --derefExpr = undefined
+  --derefRef = undefined
+  --refCell = undefined
+
+updateEval :: Pos -> CellT CellCntTy -> Either (Sheet CellCntTy) (Sheet CellCntTy) -> Either (Sheet CellCntTy) (Sheet CellCntTy)
+updateEval p c (Right s) =
+  let c' = parseCell c
+      globVars = maybe []
+                       (mapMaybe (\p -> getCell s p >>= getEval >>= \e -> return (cRefPos2Var p, e)) . scanCellRefs)
+                       (getEval c' >>= return . lExpr_)
+      c'' = evalCell
+          $ setGlobalVars c' globVars
+      oldEval = getEval c >>= return . lExpr_
+      newEval = getEval c'' >>= return . lExpr_
+  in if (oldEval == newEval)
+       then Right s
+       else let s' = setCell s p (c'' {uFlag = True})
+                in Left s'
+updateEval _ _ (Left s) = Left s
+
+
+instance Cell (CellT CellCntTy) CellCntTy String where
+  evalCell c@CellT {lExpr = maybeE} =
+    case maybeE of
+      Just e  -> c {lExpr = Just $ (evalExpr "" e)}
+      Nothing -> c
+  parseCell c@CellT {Src.Spreadsheet.SheetType.text = code} =
+    c {lExpr = flip LExpr Map.empty <$> parseExpr code}
+  getEval = lExpr
+  getText = Src.Spreadsheet.SheetType.text
+  setGlobalVars c@CellT {lExpr = maybeE} defs =
+    case maybeE of
+      Just e  -> c {lExpr = Just $ foldr (\(v,def) e' -> addGlobalVar e' v def) (cleanGlobalVars e) defs}
+      Nothing -> c
+
 readonly :: Attr Element Bool
 readonly = fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
-
 
 -- Returns the offset of a position towards a box, if the position is inside the box Nothing is returned
 isInBox :: Pos -> (Pos,Pos) -> Maybe Pos
@@ -43,10 +91,10 @@ isInBox (r,c) ((rL, cL), (rH, cH))
         else Just (rOffset,cOffset)
 
 
-grabUpdatedCells :: Sheet -> Sheet
+grabUpdatedCells :: (Var v, Expr e v) => Sheet e -> Sheet e
 grabUpdatedCells = Map.filter uFlag
 
-resetUpdateFields :: Sheet -> Sheet
+resetUpdateFields :: (Var v, Expr e v) => Sheet e -> Sheet e
 resetUpdateFields = Map.map (\c -> c {uFlag = False})
 
 posSubtr :: Pos -> Pos -> Pos
@@ -62,40 +110,16 @@ subLists :: Int -> [a] -> [[a]]
 subLists i xs = let is = [0,i..(length xs - 1)]
                 in map (\i' -> sliceList i' (i'+i-1) xs) is
 
-initSheet :: Sheet
+initSheet :: (Var v, Expr e v) => Sheet e
 initSheet = Map.empty
 
 
-getSheetCell :: Pos -> Sheet -> Cell
+getSheetCell :: (Var v, Expr e v) => Pos -> Sheet e -> CellT e
 getSheetCell pos cs
   = Map.findWithDefault emptyCell pos cs
 
-emptyCell :: Cell
-emptyCell = Cell "" Nothing False
-
-updateCells :: Sheet -> Sheet
-updateCells cs
-  = case Map.foldrWithKey updateCell (Right cs) cs of
-      Left cs' -> updateCells cs'
-      Right cs' -> cs'
-
-updateCell :: Pos -> Cell -> Either Sheet Sheet -> Either Sheet Sheet
-updateCell _ _ (Left cs)  = Left cs
-updateCell p c (Right cs) =
-  let lExpr' = parseExpr (Src.Spreadsheet.SheetType.text c) >>= return . nf . toIdInt . expandCellRefs cs
-      c'    = c { lExpr = lExpr' }
-  in case (Map.lookup p cs >>= \cOld -> return $ lExpr cOld == lExpr') of
-     -- Evaluated expr hasn't changed
-     Just True -> Right $ Map.insert p c' cs
-     -- Evaluated expr has changed, update the entire sheet
-     _ -> let cs' = trace ("lExpr' " ++ show p ++ " changed: " ++ show lExpr') Map.insert p (c' {uFlag = True}) cs
-          in Left $ cs'
-
-
-expandCellRefs :: Sheet -> LC String -> LC String
-expandCellRefs cs e
-  = let refPs = scanCellRefs e
-    in addCellRefs (mapMaybe (\p -> (,) <$> pure (cRefPos2Var p) <*> (Map.lookup p cs >>= lExpr >>= return . fromIdInt)) refPs) e
+emptyCell :: (Var v, Expr e v) => CellT e
+emptyCell = CellT "" Nothing False
 
 scanCellRefs :: LC v -> [Pos]
 scanCellRefs (CVar p)    = [p]
