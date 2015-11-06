@@ -61,7 +61,7 @@ updateEval _ _ (Left s) = Left s
 instance Cell (CellT CellCntTy) CellCntTy String where
   evalCell c@CellT {lExpr = maybeE} =
     case maybeE of
-      Just e  -> c {lExpr = Just $ (evalExpr "" e)}
+      Just e  -> c {lExpr = Just $ (evalExpr e)}
       Nothing -> c
   parseCell c@CellT {Src.Spreadsheet.SheetType.text = code} =
     c {lExpr = flip LExpr Map.empty <$> parseExpr code}
