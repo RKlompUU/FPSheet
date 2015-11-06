@@ -59,7 +59,7 @@ class Var v => Expr e v | e -> v where
   -- another expression of the same language. It might be desirable to
   -- change this function's type signature should this expection be(come)
   -- invalid.
-  evalExpr :: v -> e -> e
+  evalExpr :: e -> e
 
 -- | The @Var@ API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
