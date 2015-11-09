@@ -75,7 +75,7 @@ instance Cell (CellT CellCntTy) CellCntTy String where
 readonly :: Attr Element Bool
 readonly = fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
 
--- | @isInBox@ if the position is inside the box Nothing is returned.
+-- | 'isInBox' if the position is inside the box 'Nothing' is returned.
 -- Otherwise, it returns the offset of the position towards the box.
 isInBox :: Pos -> (Pos,Pos) -> Maybe Pos
 isInBox (r,c) ((rL, cL), (rH, cH))
@@ -93,29 +93,29 @@ isInBox (r,c) ((rL, cL), (rH, cH))
         then Nothing
         else Just (rOffset,cOffset)
 
--- | @grabUpdatedCells@ filters out all cells that have not changed.
+-- | 'grabUpdatedCells' filters out all cells that have not changed.
 grabUpdatedCells :: (Var v, Expr e v) => Sheet e -> Sheet e
 grabUpdatedCells = Map.filter uFlag
 
--- | @resetUpdateFields@ removes the update flags of all cells.
+-- | 'resetUpdateFields' removes the update flags of all cells.
 resetUpdateFields :: (Var v, Expr e v) => Sheet e -> Sheet e
 resetUpdateFields = Map.map (\c -> c {uFlag = False})
 
--- | Subtraction on @Pos@ variables.
+-- | Subtraction on 'Pos' variables.
 posSubtr :: Pos -> Pos -> Pos
 posSubtr (r1,c1) (r2,c2) = (r1-r2,c1-c2)
 
--- | Addition on @Pos@ variables.
+-- | Addition on 'Pos' variables.
 posAdd :: Pos -> Pos -> Pos
 posAdd (r1,c1) (r2,c2) = (r1+r2,c1+c2)
 
--- | @sliceList@ grabs a part of list @xs@ that ranges from index @from@ to
--- index @to@.
+-- | 'sliceList' grabs a part of list 'xs' that ranges from index 'from' to
+-- index 'to'.
 sliceList :: Int -> Int -> [a] -> [a]
 sliceList from to xs = take (to - from + 1) (drop from xs)
 
--- | @subLists@ slices a list @xs@, where each slice has a length of at most
--- @i@.
+-- | 'subLists' slices a list 'xs', where each slice has a length of at most
+-- 'i'.
 subLists :: Int -> [a] -> [[a]]
 subLists i xs = let is = [0,i..(length xs - 1)]
                 in map (\i' -> sliceList i' (i'+i-1) xs) is
@@ -123,7 +123,7 @@ subLists i xs = let is = [0,i..(length xs - 1)]
 initSheet :: (Var v, Expr e v) => Sheet e
 initSheet = Map.empty
 
--- | Helper function to conveniently obtain a @CellT e@ from the @Sheet e@.
+-- | Helper function to conveniently obtain a 'CellT e' from the 'Sheet e'.
 getSheetCell :: (Var v, Expr e v) => Pos -> Sheet e -> CellT e
 getSheetCell pos cs
   = Map.findWithDefault emptyCell pos cs
@@ -131,7 +131,7 @@ getSheetCell pos cs
 emptyCell :: (Var v, Expr e v) => CellT e
 emptyCell = CellT "" Nothing False
 
--- | @scanCellRefs@ obtains all references that are present in an
+-- | 'scanCellRefs' obtains all references that are present in an
 -- expression. This is for example used to find out which global variables
 -- need to be added to an expression prior to evaluating it.
 scanCellRefs :: LC v -> [Pos]
