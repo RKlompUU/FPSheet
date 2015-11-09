@@ -4,13 +4,13 @@ Description : An experimental application of the spreadsheet API
 Stability   : experimental
 -}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts #-}
-module Src.Spreadsheet.Sheet
-      ( module Src.Spreadsheet.Sheet
-      , module Src.Spreadsheet.SheetType
-      , module Src.Lambda.Lambda
+module Spreadsheet.Sheet
+      ( module Spreadsheet.Sheet
+      , module Spreadsheet.SheetType
+      , module Lambda.Lambda
       ) where
 
-import Src.Spreadsheet.SheetType
+import Spreadsheet.SheetType
 
 import Data.Maybe
 
@@ -24,11 +24,11 @@ import qualified Data.Set as Set
 
 import qualified Data.Aeson                  as JSON
 
-import Src.API.SheetAbstr
+import API.SheetAbstr
 
 import Debug.Trace
 
-import Src.Lambda.Lambda
+import Lambda.Lambda
 
 
 type CellCntTy = LExpr String
@@ -63,10 +63,10 @@ instance Cell (CellT CellCntTy) CellCntTy String where
     case maybeE of
       Just e  -> c {lExpr = Just $ (evalExpr e)}
       Nothing -> c
-  parseCell c@CellT {Src.Spreadsheet.SheetType.text = code} =
+  parseCell c@CellT {Spreadsheet.SheetType.text = code} =
     c {lExpr = flip LExpr Map.empty <$> parseExpr code}
   getEval = lExpr
-  getText = Src.Spreadsheet.SheetType.text
+  getText = Spreadsheet.SheetType.text
   setGlobalVars c@CellT {lExpr = maybeE} defs =
     case maybeE of
       Just e  -> c {lExpr = Just $ foldr (\(v,def) e' -> addGlobalVar e' v def) (cleanGlobalVars e) defs}
