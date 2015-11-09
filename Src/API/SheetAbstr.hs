@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-module Src.API.SheetAbstr where
+module API.SheetAbstr where
 
 -- | Each Cell is positioned on a 2-dimensional grid. Its position is
 -- defined by the ith row and jth column, where i and j are @(i, j) :: Pos@
