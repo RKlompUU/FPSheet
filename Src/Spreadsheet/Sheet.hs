@@ -17,7 +17,7 @@ import Data.Maybe
 import Control.Monad
 import Control.Concurrent.STM
 
-import Graphics.UI.Threepenny.Core
+import qualified Graphics.UI.Threepenny.Core as UI
 import qualified Graphics.UI.Threepenny as UI
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -30,32 +30,36 @@ import Debug.Trace
 
 import Lambda.Lambda
 
-
 type CellCntTy = LExpr String
 
-instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String where
-  updateEvals s =
-    case Map.foldrWithKey updateEval (Right s) s of
-      Left s' -> updateEvals s'
-      Right s' -> s'
-  getCell s p = Map.lookup p s
+instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State (Sheet CellCntTy)) where
+  updateEvals = do
+              s <- get
+              mapM_ updateEval ((Map.toList s))
+  getCell p = do
+            s <- get
+            return (Map.lookup p s)
   setCell s p c = Map.insert p c s
 
-updateEval :: Pos -> CellT CellCntTy -> Either (Sheet CellCntTy) (Sheet CellCntTy) -> Either (Sheet CellCntTy) (Sheet CellCntTy)
-updateEval p c (Right s) =
-  let c' = parseCell c
-      globVars = maybe []
-                       (mapMaybe (\p -> getCell s p >>= getEval >>= \e -> return (cRefPos2Var p, e)) . scanCellRefs)
-                       (getEval c' >>= return . lExpr_)
-      c'' = evalCell
-          $ setGlobalVars c' globVars
-      oldEval = getEval c >>= return . lExpr_
-      newEval = getEval c'' >>= return . lExpr_
-  in if (oldEval == newEval)
-       then Right s
-       else let s' = setCell s p (c'' {uFlag = True})
-                in Left s'
-updateEval _ _ (Left s) = Left s
+updateEval :: (Pos, CellT CellCntTy) -> State (Sheet CellCntTy) ()
+updateEval (p, c) =
+  do
+    s <- get
+    mC <- getCell p
+    let mC' = mC >>= \c -> return $ parseCell c
+        globVars = maybe []
+                         (mapMaybe (\p -> mC' >>= getEval >>= \e -> trace ("cRefs: " ++ show p) return (cRefPos2Var p, e)) . scanCellRefs)
+                         (mC' >>= \c' -> getEval c' >>= return . lExpr_)
+        mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ evalCell (setGlobalVars c' globVars)
+        oldEval = mC >>= \c -> getEval c >>= return . lExpr_
+        newEval = mC'' >>= \c'' -> getEval c'' >>= return . lExpr_
+    if (oldEval == newEval)
+      then return ()
+      else let c'' = case newEval of
+                       Just e -> trace ("Updating e to: " ++ show e) c {uFlag = True, lExpr = Just $ LExpr e Map.empty}
+                       Nothing -> c {uFlag = True, lExpr = Nothing}
+               s' = setCell s p c''
+           in put s' >> updateEvals
 
 
 instance Cell (CellT CellCntTy) CellCntTy String where
@@ -72,8 +76,8 @@ instance Cell (CellT CellCntTy) CellCntTy String where
       Just e  -> c {lExpr = Just $ foldr (\(v,def) e' -> addGlobalVar e' v def) (cleanGlobalVars e) defs}
       Nothing -> c
 
-readonly :: Attr Element Bool
-readonly = fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
+readonly :: UI.Attr UI.Element Bool
+readonly = UI.fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
 -- Otherwise, it returns the offset of the position towards the box.
