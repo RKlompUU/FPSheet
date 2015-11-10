@@ -1,5 +1,16 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
-module API.SheetAbstr where
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes,
+             ConstraintKinds #-}
+module API.SheetAbstr
+  ( module API.SheetAbstr
+  , module Control.Monad
+  , module Control.Monad.State
+  , module Data.Functor.Identity
+  ) where
+
+import Control.Monad
+import Control.Monad.State
+
+import Data.Functor.Identity
 
 -- | Each Cell is positioned on a 2-dimensional grid. Its position is
 -- defined by the ith row and jth column, where i and j are \"(i, j) :: 'Pos'\"
@@ -10,7 +21,7 @@ type Pos = (Int,Int)
 
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v where
+class (MonadState s m, Var v, Expr e v, Cell c e v) => Spreadsheet s c e v m | s -> c, s -> v, s -> m where
   -- | 'updateEvals' performs a full update (it evaluates each cell).
   -- The current implementation that has been used to experiment with this
   -- API performs naive updates. It might be a good idea to change this
@@ -19,9 +30,9 @@ class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v wher
   -- act upon). Although other update strategies could be applied with the
   -- current API as well by saving additional information inside the
   -- Spreadsheet datatype 's'.
-  updateEvals :: s -> s
+  updateEvals :: State s ()
   -- | 'getCell' retrieves a cell from the spreadsheet.
-  getCell :: s -> Pos -> Maybe c
+  getCell :: Pos -> State s (Maybe c)
   -- | 'setCell' sets a 'Cell' c at 'Pos' in the spreadsheet. If a 'Cell' at the given 'Pos' was already present, it is overwritten.
   setCell :: s -> Pos -> c -> s
 
