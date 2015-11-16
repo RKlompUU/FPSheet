@@ -46,10 +46,13 @@ updateEval (p, c) =
   do
     s <- get
     mC <- getCell p
+    let refs = case (mC >>= getEval >>= return . lExpr_) of
+                Just e  -> scanCellRefs e
+                Nothing -> []
+    refCs <- catMaybes . zip refs <$> mapM getCell refs
+    let refEs = map (\(p,c) -> (p,getEval c)) refCs
     let mC' = mC >>= \c -> return $ parseCell c
-        globVars = maybe []
-                         (mapMaybe (\p -> mC' >>= getEval >>= \e -> trace ("cRefs: " ++ show p) return (cRefPos2Var p, e)) . scanCellRefs)
-                         (mC' >>= \c' -> getEval c' >>= return . lExpr_)
+        globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (cRefPos2Var p, e)) refEs
         mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ evalCell (setGlobalVars c' globVars)
         oldEval = mC >>= \c -> getEval c >>= return . lExpr_
         newEval = mC'' >>= \c'' -> getEval c'' >>= return . lExpr_
