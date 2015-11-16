@@ -12,6 +12,8 @@ import Control.Monad.State
 
 import Data.Functor.Identity
 
+import Data.Map
+
 -- | Each Cell is positioned on a 2-dimensional grid. Its position is
 -- defined by the ith row and jth column, where i and j are \"(i, j) :: 'Pos'\"
 type Pos = (Int,Int)
@@ -21,7 +23,7 @@ type Pos = (Int,Int)
 
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (MonadState s m, Var v, Expr e v, Cell c e v) => Spreadsheet s c e v m | s -> c, s -> v, s -> m where
+class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v, s -> e where
   -- | 'updateEvals' performs a full update (it evaluates each cell).
   -- The current implementation that has been used to experiment with this
   -- API performs naive updates. It might be a good idea to change this
@@ -41,11 +43,11 @@ class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   -- | 'evalCell' tries to evaluate the expression that it contains.
   -- Prior to calling this, the cell's textual contents need to have been
   -- parsed using the 'parseCell' function.
-  evalCell :: c -> c
+  evalCell :: c -> State (Env v e) c
   -- | 'setGlobalVars' sets the global variables 'v' along with their
   -- definitions 'e'. Subsequent calls to 'evalCell' will be able to use
   -- this.
-  setGlobalVars :: c -> [(v,e)] -> c
+  setGlobalVars :: [(v,e)] -> State (Env v e) c
   -- | 'parseCell' Tries to parse the textual contents of 'Cell' c.
   parseCell :: c -> c
   -- | 'getEval' returns the evaluation that has been determined during
@@ -56,22 +58,24 @@ class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   getText :: c -> String
 
 
+type Env v e = Map v e
+
 -- | The 'Expr' API interface supplies expression manipulation functions.
 class Var v => Expr e v | e -> v where
   -- | 'addGlobalVar' adds a global variable along with its definition to
   -- the expression. All global variables that are required for a succesful
   -- evaluation of the expression should be given through this function
   -- prior to calling the 'evalExpr' function.
-  addGlobalVar :: e -> v -> State [(e,v)] ()
+  addGlobalVar :: e -> v -> State (Env v e) ()
   -- | 'cleanGlobalVars' removes any prior added global variables along
   -- with their definitions from the expression.
-  cleanGlobalVars :: State [(e,v)] ()
+  cleanGlobalVars :: State (Env v e) ()
   -- | 'evalExpr' evaluates the expression. Currently this part of the API
   -- expects that succesfully evaluating an expression will result in
   -- another expression of the same language. It might be desirable to
   -- change this function\'s type signature should this expection be(come)
   -- invalid.
-  evalExpr :: e -> State [(e,v)] e
+  evalExpr :: e -> State (Env v e) e
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
