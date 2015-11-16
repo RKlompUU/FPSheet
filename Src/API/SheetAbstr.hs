@@ -55,22 +55,23 @@ class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   -- | 'getText' returns the textual contents of a 'Cell'.
   getText :: c -> String
 
+
 -- | The 'Expr' API interface supplies expression manipulation functions.
 class Var v => Expr e v | e -> v where
   -- | 'addGlobalVar' adds a global variable along with its definition to
   -- the expression. All global variables that are required for a succesful
   -- evaluation of the expression should be given through this function
   -- prior to calling the 'evalExpr' function.
-  addGlobalVar :: e -> v -> e -> e
+  addGlobalVar :: e -> v -> State [(e,v)] ()
   -- | 'cleanGlobalVars' removes any prior added global variables along
   -- with their definitions from the expression.
-  cleanGlobalVars :: e -> e
+  cleanGlobalVars :: State [(e,v)] ()
   -- | 'evalExpr' evaluates the expression. Currently this part of the API
   -- expects that succesfully evaluating an expression will result in
   -- another expression of the same language. It might be desirable to
   -- change this function\'s type signature should this expection be(come)
   -- invalid.
-  evalExpr :: e -> e
+  evalExpr :: e -> State [(e,v)] e
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
