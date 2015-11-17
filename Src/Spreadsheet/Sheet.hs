@@ -79,7 +79,7 @@ instance Cell (CellT CellCntTy) CellCntTy String where
     do
       env <- ask
       case maybeE of
-        Just e  -> return $ c {lExpr = Just $ fst $ runState (evalExpr e) env}
+        Just e  -> (\e' -> c {lExpr = Just e'}) <$> evalExpr e
         Nothing -> return c
   parseCell c@CellT {Spreadsheet.SheetType.text = code} =
     c {lExpr = parseExpr code}
