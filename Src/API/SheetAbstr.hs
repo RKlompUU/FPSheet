@@ -19,6 +19,9 @@ import Data.Map
 -- defined by the ith row and jth column, where i and j are \"(i, j) :: 'Pos'\"
 type Pos = (Int,Int)
 
+type Env v e = Map v e
+
+
 -- Annotated text (with for example explicit information about cells that are referred to)
 --class AnnText t where
 
@@ -59,24 +62,15 @@ class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   getText :: c -> String
 
 
-type Env v e = Map v e
 
 -- | The 'Expr' API interface supplies expression manipulation functions.
 class Var v => Expr e v | e -> v where
-  -- | 'addGlobalVar' adds a global variable along with its definition to
-  -- the expression. All global variables that are required for a succesful
-  -- evaluation of the expression should be given through this function
-  -- prior to calling the 'evalExpr' function.
-  addGlobalVar :: e -> v -> State (Env v e) ()
-  -- | 'cleanGlobalVars' removes any prior added global variables along
-  -- with their definitions from the expression.
-  cleanGlobalVars :: State (Env v e) ()
   -- | 'evalExpr' evaluates the expression. Currently this part of the API
   -- expects that succesfully evaluating an expression will result in
   -- another expression of the same language. It might be desirable to
   -- change this function\'s type signature should this expection be(come)
   -- invalid.
-  evalExpr :: e -> State (Env v e) e
+  evalExpr :: e -> Reader (Env v e) e
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
