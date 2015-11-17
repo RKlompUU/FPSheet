@@ -9,6 +9,7 @@ module API.SheetAbstr
 
 import Control.Monad
 import Control.Monad.State
+import Control.Monad.Reader
 
 import Data.Functor.Identity
 
@@ -36,18 +37,18 @@ class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v, s -
   -- | 'getCell' retrieves a cell from the spreadsheet.
   getCell :: Pos -> State s (Maybe c)
   -- | 'setCell' sets a 'Cell' c at 'Pos' in the spreadsheet. If a 'Cell' at the given 'Pos' was already present, it is overwritten.
-  setCell :: s -> Pos -> c -> s
+  setCell :: Pos -> c -> State s ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
 class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   -- | 'evalCell' tries to evaluate the expression that it contains.
   -- Prior to calling this, the cell's textual contents need to have been
   -- parsed using the 'parseCell' function.
-  evalCell :: c -> State (Env v e) c
-  -- | 'setGlobalVars' sets the global variables 'v' along with their
+  --
+  ---- | 'setGlobalVars' sets the global variables 'v' along with their
   -- definitions 'e'. Subsequent calls to 'evalCell' will be able to use
   -- this.
-  setGlobalVars :: [(v,e)] -> State (Env v e) c
+  evalCell :: c -> Reader (Env v e) c
   -- | 'parseCell' Tries to parse the textual contents of 'Cell' c.
   parseCell :: c -> c
   -- | 'getEval' returns the evaluation that has been determined during
