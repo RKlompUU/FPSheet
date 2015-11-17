@@ -17,6 +17,7 @@ import Data.Maybe
 
 import Control.Monad
 import Control.Concurrent.STM
+import Control.Monad.Reader
 
 import qualified Graphics.UI.Threepenny.Core as UI
 import qualified Graphics.UI.Threepenny as UI
@@ -31,8 +32,6 @@ import Debug.Trace
 
 import Lambda.Lambda
 
-data LExpr v = LExpr (LC v)
-
 type CellCntTy = LC String
 
 instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String where
@@ -42,24 +41,27 @@ instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String where
   getCell p = do
             s <- get
             return (Map.lookup p s)
-  setCell s p c = Map.insert p c s
+  setCell p c = do
+              s <- get
+              put (Map.insert p c s)
 
-updateEval :: (Pos, CellT CellCntTy) -> State (Sheet CellCntTy) ()
+-- updateEval :: Spreadsheet s (CellT CellCntTy) CellCntTy String => (Pos, CellT t) -> StateT s Identity ()
 updateEval (p, c) =
   do
-    s <- get
+    let freshParse = parseCell c
+    s <- trace ("Updateting: " ++ show p) get
     mC <- getCell p
-    let refs = case (mC >>= getEval) of
-                Just e  -> scanCellRefs e
-                Nothing -> []
+    let refs = case (getEval freshParse) of
+                Just e  -> trace ("Scanning refs in: " ++ show e) scanCellRefs e
+                Nothing -> trace "No evaluation" []
     refCs <- catMaybes
           <$> map preCat
           <$> zip refs
-          <$> mapM getCell refs
+          <$> trace ("Found refs; " ++ show refs) mapM getCell refs
     let refEs = map (\(p,c :: CellT CellCntTy) -> (p,getEval c)) refCs
     let mC' = mC >>= \c -> return $ parseCell c
         globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (cRefPos2Var p, e)) refEs
-        mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ evalCell (setGlobalVars c' globVars)
+        mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ runReader (evalCell c') (Map.fromList globVars)
         oldEval = mC >>= \c -> getEval c
         newEval = mC'' >>= \c'' -> getEval c''
     if (oldEval == newEval)
@@ -67,25 +69,22 @@ updateEval (p, c) =
       else let c'' = case newEval of
                        Just e -> trace ("Updating e to: " ++ show e) c {uFlag = True, lExpr = Just $ e}
                        Nothing -> c {uFlag = True, lExpr = Nothing}
-               s' = setCell s p c''
-           in put s' >> updateEvals
+           in setCell p c'' >> updateEvals
   where preCat (p,Just j) = Just (p, j)
         preCat (p,Nothing) = Nothing
 
 
 instance Cell (CellT CellCntTy) CellCntTy String where
   evalCell c@CellT {lExpr = maybeE} =
-    case maybeE of
-      Just e  -> c {lExpr = Just $ fst $ runState (evalExpr e) Map.empty}
-      Nothing -> c
+    do
+      env <- ask
+      case maybeE of
+        Just e  -> return $ c {lExpr = Just $ fst $ runState (evalExpr e) env}
+        Nothing -> return c
   parseCell c@CellT {Spreadsheet.SheetType.text = code} =
     c {lExpr = parseExpr code}
   getEval = lExpr
   getText = Spreadsheet.SheetType.text
-  setGlobalVars c@CellT {lExpr = maybeE} defs =
-    case maybeE of
-      Just e  -> undefined -- c {lExpr = Just $ foldr (\(v,def) e' -> addGlobalVar e' v def) (cleanGlobalVars e) defs}
-      Nothing -> c
 
 readonly :: UI.Attr UI.Element Bool
 readonly = UI.fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
