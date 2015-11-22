@@ -27,7 +27,7 @@ type Env v e = Map v e
 
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (MonadState s m, Var v, Expr e v (Reader (Map v e)), Cell c e v (Reader (Map v e))) => Spreadsheet s c e v m | s -> c, s -> v, s -> e, s -> m where
+class (MonadState s m, Var v, Expr e v rm, Cell c e v rm) => Spreadsheet s c e v m rm | s -> c, s -> v, s -> e, s -> m where
   -- | 'updateEvals' performs a full update (it evaluates each cell).
   updateEvals :: m ()
   -- | 'getCell' retrieves a cell from the spreadsheet.
