@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes,
-             ConstraintKinds #-}
+             ConstraintKinds, FlexibleContexts #-}
 module API.SheetAbstr
   ( module API.SheetAbstr
   , module Control.Monad
@@ -27,7 +27,7 @@ type Env v e = Map v e
 
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v, s -> e where
+class (MonadState s m, Var v, Expr e v (Reader (Env v e)), Cell c e v (Reader (Env v e))) => Spreadsheet s c e v m | s -> c, s -> v, s -> e, s -> m where
   -- | 'updateEvals' performs a full update (it evaluates each cell).
   -- The current implementation that has been used to experiment with this
   -- API performs naive updates. It might be a good idea to change this
@@ -36,14 +36,14 @@ class (Var v, Expr e v, Cell c e v) => Spreadsheet s c e v | s -> c, s -> v, s -
   -- act upon). Although other update strategies could be applied with the
   -- current API as well by saving additional information inside the
   -- Spreadsheet datatype 's'.
-  updateEvals :: State s ()
+  updateEvals :: m ()
   -- | 'getCell' retrieves a cell from the spreadsheet.
-  getCell :: Pos -> State s (Maybe c)
+  getCell :: Pos -> m (Maybe c)
   -- | 'setCell' sets a 'Cell' c at 'Pos' in the spreadsheet. If a 'Cell' at the given 'Pos' was already present, it is overwritten.
-  setCell :: Pos -> c -> State s ()
+  setCell :: Pos -> c -> m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
-class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
+class (MonadReader (Env v e) m, Var v, Expr e v m) => Cell c e v m | c -> e, c -> v, v -> m, e -> m where
   -- | 'evalCell' tries to evaluate the expression that it contains.
   -- Prior to calling this, the cell's textual contents need to have been
   -- parsed using the 'parseCell' function.
@@ -51,7 +51,7 @@ class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
   ---- | 'setGlobalVars' sets the global variables 'v' along with their
   -- definitions 'e'. Subsequent calls to 'evalCell' will be able to use
   -- this.
-  evalCell :: c -> Reader (Env v e) c
+  evalCell :: c -> m c
   -- | 'parseCell' Tries to parse the textual contents of 'Cell' c.
   parseCell :: c -> c
   -- | 'getEval' returns the evaluation that has been determined during
@@ -64,13 +64,13 @@ class (Var v, Expr e v) => Cell c e v | c -> e, c -> v where
 
 
 -- | The 'Expr' API interface supplies expression manipulation functions.
-class Var v => Expr e v | e -> v where
+class (MonadReader (Env v e) m, Var v) => Expr e v m | e -> v, v -> m, e -> m where
   -- | 'evalExpr' evaluates the expression. Currently this part of the API
   -- expects that succesfully evaluating an expression will result in
   -- another expression of the same language. It might be desirable to
   -- change this function\'s type signature should this expection be(come)
   -- invalid.
-  evalExpr :: e -> Reader (Env v e) e
+  evalExpr :: e -> m e
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
