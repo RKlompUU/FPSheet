@@ -45,7 +45,14 @@ instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State
               s <- get
               put (Map.insert p c s)
 
--- updateEval :: Spreadsheet s (CellT CellCntTy) CellCntTy String => (Pos, CellT t) -> StateT s Identity ()
+-- | A naive way of fully (re)evaluating the cell expressions. If an
+-- evaluation differs from the prior evaluation, the entire sheet will again
+-- be evaluated. This is repeated until none of the evaluations differ from
+-- the prior evaluation.
+updateEval
+  :: (Show v1, Cell (CellT t) (LC v1) v m,
+      Spreadsheet s (CellT CellCntTy) CellCntTy String m1) =>
+     (Pos, CellT t) -> m1 ()
 updateEval (p, c) =
   do
     let freshParse = parseCell c
