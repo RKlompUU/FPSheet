@@ -34,7 +34,7 @@ import Lambda.Lambda
 
 type CellCntTy = LC String
 
-instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State (Sheet CellCntTy)) where
+instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State (Sheet CellCntTy)) (Reader (Map.Map String CellCntTy)) where
   updateEvals = do
               s <- get
               mapM_ updateEval ((Map.toList s))
@@ -51,7 +51,7 @@ instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State
 -- the prior evaluation.
 updateEval
   :: (Show v1, Cell (CellT t) (LC v1) v m,
-      Spreadsheet s (CellT CellCntTy) CellCntTy String m1) =>
+      Spreadsheet s (CellT CellCntTy) CellCntTy String m1 (Reader (Map.Map String (LC String)))) =>
      (Pos, CellT t) -> m1 ()
 updateEval (p, c) =
   do
