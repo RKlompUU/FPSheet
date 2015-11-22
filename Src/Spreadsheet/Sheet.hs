@@ -34,7 +34,7 @@ import Lambda.Lambda
 
 type CellCntTy = LC String
 
-instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String where
+instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State (Sheet CellCntTy)) where
   updateEvals = do
               s <- get
               mapM_ updateEval ((Map.toList s))
@@ -74,7 +74,7 @@ updateEval (p, c) =
         preCat (p,Nothing) = Nothing
 
 
-instance Cell (CellT CellCntTy) CellCntTy String where
+instance Cell (CellT CellCntTy) CellCntTy String (Reader (Env String CellCntTy)) where
   evalCell c@CellT {lExpr = maybeE} =
     do
       env <- ask
@@ -108,11 +108,11 @@ isInBox (r,c) ((rL, cL), (rH, cH))
         else Just (rOffset,cOffset)
 
 -- | 'grabUpdatedCells' filters out all cells that have not changed.
-grabUpdatedCells :: (Var v, Expr e v) => Sheet e -> Sheet e
+grabUpdatedCells :: (Var v, Expr e v (Reader (Env v e))) => Sheet e -> Sheet e
 grabUpdatedCells = Map.filter uFlag
 
 -- | 'resetUpdateFields' removes the update flags of all cells.
-resetUpdateFields :: (Var v, Expr e v) => Sheet e -> Sheet e
+resetUpdateFields :: (Var v, Expr e v (Reader (Env v e))) => Sheet e -> Sheet e
 resetUpdateFields = Map.map (\c -> c {uFlag = False})
 
 -- | Subtraction on 'Pos' variables.
@@ -134,15 +134,15 @@ subLists :: Int -> [a] -> [[a]]
 subLists i xs = let is = [0,i..(length xs - 1)]
                 in map (\i' -> sliceList i' (i'+i-1) xs) is
 
-initSheet :: (Var v, Expr e v) => Sheet e
+initSheet :: (Var v, Expr e v (Reader (Env v e))) => Sheet e
 initSheet = Map.empty
 
 -- | Helper function to conveniently obtain a 'CellT e' from the 'Sheet e'.
-getSheetCell :: (Var v, Expr e v) => Pos -> Sheet e -> CellT e
+getSheetCell :: (Var v, Expr e v (Reader (Env v e))) => Pos -> Sheet e -> CellT e
 getSheetCell pos cs
   = Map.findWithDefault emptyCell pos cs
 
-emptyCell :: (Var v, Expr e v) => CellT e
+emptyCell :: (Var v, Expr e v (Reader (Env v e))) => CellT e
 emptyCell = CellT "" Nothing False
 
 -- | 'scanCellRefs' obtains all references that are present in an
