@@ -1,5 +1,7 @@
 CC=gcc
-CFLAGS=-I.
+CFLAGS  = -I. -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align
+CFLAGS += -Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings -Wformat=2 -Wcast-qual
+CFLAGS += -Wconversion -Wno-unused-parameter
 LIBS = -lncurses
 
 ODIR = .obj
