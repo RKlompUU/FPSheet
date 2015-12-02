@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS  = -I. -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align
+CFLAGS  = -g -I. -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align
 CFLAGS += -Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings -Wformat=2 -Wcast-qual
 CFLAGS += -Wconversion -Wno-unused-parameter
 LIBS = -lncurses
@@ -19,6 +19,7 @@ fpsheet: $(OBJ)
 $(ODIR)/%.o: %.c
 	$(CC) -MMD -c -o $@ $< $(CFLAGS)
 
+all: fpsheet
 
 .PHONY: clean
 

@@ -10,3 +10,5 @@ void initCurses( void )
   getch();
   endwin();
 }
+
+
