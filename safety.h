@@ -1,6 +1,9 @@
 #ifndef SAFETY_H
 #define SAFETY_H
 
+#include "crash.h"
+
+
 #define ALLOC_CHECKS
 #define PARAM_CHECKS
 
@@ -11,8 +14,7 @@
 #define CHECK_ALLOC( p ) \
   if( p == NULL ) \
   { \
-    perror( "Allocation failed!" ); \
-    exit( EXIT_FAILURE ); \
+    crash( "Allocation failed!" ); \
   }
 #else
 #define CHECK_ALLOC( p ) ;

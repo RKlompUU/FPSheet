@@ -8,8 +8,11 @@ struct sheet
 {
   struct map * cells;
 
-  unsigned int rOffset;
-  unsigned int cOffset;
+  unsigned int rowOff;
+  unsigned int colOff;
+
+  unsigned int scrHeight;
+  unsigned int scrWidth;
 };
 
 struct pos

@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "crash.h"
+
 #define ALLOC_BLOCK_SIZE 50
 
 
@@ -24,12 +26,16 @@ struct list * allocList( void )
   return l;
 }
 
-void freeList( struct list * l )
+void freeListExcl( struct list * l )
 {
   for( unsigned int i = 0; i < l->size; i++ )
     free( l->xs[i] );
 
   free( l->xs );
+}
+void freeList( struct list * l )
+{
+  freeListExcl( l );
   free( l );
 }
 
@@ -49,13 +55,21 @@ void pushBack( struct list * l, void * x )
   l->xs[l->size++] = x;
 }
 
+void destroy( struct list * l, unsigned int i )
+{
+  free( l->xs[i] );
+  memmove( l->xs + sizeof(void *) * i,
+           l->xs + sizeof(void *) * l->size,
+           l->size - i );
+  l->size--;
+}
+
 void * get( struct list * l, unsigned int i )
 {
 #ifdef PARAM_CHECKS
   if( i >= l->size )
   {
-    perror( "get out of bounds!" );
-    exit( EXIT_FAILURE );
+    crash( "get out of bounds!" );
   }
 #endif
 

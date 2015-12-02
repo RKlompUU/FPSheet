@@ -3,13 +3,19 @@
 
 #include "sheet.h"
 
+#include <ncurses.h>
 
 void initCurses( void );
-void exitCurses( void );
+void exitCurses( bool cleanupMem );
+bool isCursesEnabled( void );
+void cursesCtrlLoop( void );
 
-void drawCell( const struct sheet * const s, const struct cell * const c );
+void drawCell( const struct cell * const c );
 
-void drawHeaders( struct sheet * s );
+void drawHeaders( void );
+
+void subKey( int k, void (*callback)(int) );
+void handleEvent( int k );
 
 
 #endif

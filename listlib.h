@@ -10,8 +10,10 @@ struct list
 
 struct list * allocList( void );
 void freeList( struct list * l );
+void freeListExcl( struct list * l );
 
 void pushBack( struct list * l, void * x );
+void destroy( struct list * l, unsigned int i );
 void * get( struct list * l, unsigned int i );
 
 int getI( struct list * l, unsigned int i );
