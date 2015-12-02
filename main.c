@@ -14,6 +14,11 @@ void atExitProg( void )
     exitCurses( true );
 }
 
+void dH( int k )
+{
+  drawHeaders();
+}
+
 int main( int argc, char ** argv )
 {
   atexit( atExitProg );
@@ -22,6 +27,7 @@ int main( int argc, char ** argv )
   initCurses();
 
   subKey( KEY_END, exitSignal );
+  subKey( 'h', dH );
 
   cursesCtrlLoop();
 

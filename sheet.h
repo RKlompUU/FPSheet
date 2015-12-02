@@ -1,6 +1,8 @@
 #ifndef SHEET_H
 #define SHEET_H
 
+#include "maindefs.h"
+
 #include "listlib.h"
 #include <stdbool.h>
 
@@ -8,17 +10,25 @@ struct sheet
 {
   struct map * cells;
 
-  unsigned int rowOff;
-  unsigned int colOff;
+  int rowOff;
+  int colOff;
 
-  unsigned int scrHeight;
-  unsigned int scrWidth;
+  uint wH;
+  uint wW;
+
+  uint hW;
+  uint hH;
+
+  uint cW;
+  uint cH;
 };
+
+extern struct sheet s;
 
 struct pos
 {
-  unsigned int row;
-  unsigned int col;
+  uint row;
+  uint col;
 };
 
 struct cell
@@ -30,13 +40,15 @@ struct cell
   bool uFlag;
 };
 
-struct pos getPos( struct list * l, unsigned int i );
+struct pos getPos( struct list * l, uint i );
 
 struct cell * findCellP( struct map * cells, struct pos p );
-struct cell * findCellP2( struct map * cells, unsigned int row, unsigned int col );
-struct cell * getCellP( struct list * l, unsigned int i );
+struct cell * findCellP2( struct map * cells, uint row, uint col );
+struct cell * getCellP( struct list * l, uint i );
 
 struct cell * newC( const char * txt, struct pos * p );
+
+void initSheet( void );
 
 
 #endif
