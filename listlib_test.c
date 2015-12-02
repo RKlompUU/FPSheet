@@ -10,10 +10,10 @@ void testIntList( void )
   struct list * l = allocList();
 
   for( int i = 0; i < 50; i++ )
-    push_back( l, newI(i) );
+    pushBack( l, newI(i) );
 
   printf( "List size: %u\nAllocated: %u\n", l->size, l->allocated );
-  push_back( l, newI(0) );
+  pushBack( l, newI(0) );
   printf( "List size: %u\nAllocated: %u\n", l->size, l->allocated );
 
   for( unsigned int i = 0; i < l->size; i++ )

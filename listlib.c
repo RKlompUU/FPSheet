@@ -41,7 +41,7 @@ void increaseList( struct list * l )
   CHECK_ALLOC( l->xs );
 }
 
-void push_back( struct list * l, void * x )
+void pushBack( struct list * l, void * x )
 {
   while( l->size >= l->allocated )
     increaseList( l );
@@ -65,4 +65,43 @@ void * get( struct list * l, unsigned int i )
 int getI( struct list * l, unsigned int i )
 {
   return *((int *) get( l, i ));
+}
+
+
+struct map * allocMap( int (*cmpKeys)(void *, void *) )
+{
+  struct map * m = malloc( sizeof(struct map) );
+  CHECK_ALLOC( m );
+
+  m->keys = allocList();
+  m->vals = allocList();
+  m->cmpKeys = cmpKeys;
+  m->pSize = &m->vals->size;
+
+  return m;
+}
+
+void freeMap( struct map * m )
+{
+  freeList( m->keys );
+  freeList( m->vals );
+
+  free( m );
+}
+
+void mapAdd( struct map * m, void * k, void * v )
+{
+  pushBack( m->keys, k );
+  pushBack( m->vals, v );
+}
+
+void * mapFind( struct map * m, void * k )
+{
+  for( unsigned int i = 0; i < *m->pSize; i++ )
+  {
+    if( (*m->cmpKeys)(get(m->keys, i), k) == 0 )
+      return get( m->vals, i );
+  }
+
+  return NULL;
 }
