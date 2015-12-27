@@ -7,7 +7,7 @@
 #include <ncurses.h>
 
 
-struct sheet s;
+// struct sheet s; < extern
 
 struct keyListener
 {
@@ -36,20 +36,25 @@ void initCurses( void )
   cbreak(); // Instantly send keypress events to this application, don't wait for EOLs
   noecho();
   nonl();
-  cursesEnabled = true;
 
-  initSheet();
+  initList( &kListeners );
+
+  cursesEnabled = true;
 }
 
 void exitCurses( bool cleanupMem )
 {
-  cursesEnabled = false;
-  endwin();
-
-  if( cleanupMem )
+  if( cursesEnabled )
   {
-    freeListExcl( &kListeners );
+    if( cleanupMem )
+    {
+      freeListExcl( &kListeners );
+    }
+
+    endwin();
   }
+
+  cursesEnabled = false;
 }
 
 void cursesCtrlLoop( void )
@@ -86,6 +91,18 @@ void drawCell( const struct cell * const c )
 {
 }
 
+void cleanArea( uint x1, uint y1, uint x2, uint y2 )
+{
+  for( uint x = x1; x < x2; x++ )
+  {
+    for( uint y = y1; y < y2; y++ )
+    {
+      mvaddch( (int)x, (int)y, ' ' );
+    }
+  }
+}
+
+uint oldHW = 0;
 void drawHeaders( void )
 {
   // Line numbers
@@ -95,6 +112,9 @@ void drawHeaders( void )
   //    The length of row numbers will never even come close to the limits of uint
   //    , since long before that point would've been reached other limits would've been reached already
   s.hW = (uint) uiLength( lastN ) + 1; // + 1 for the border
+
+  cleanArea( s.hH, 0, s.wH, oldHW );
+  oldHW = s.hW;
 
   for( uint n = (uint) s.rowOff; n <= lastN ; n++ )
   {
@@ -114,7 +134,7 @@ void drawHeaders( void )
 
 void handleEvent( int k )
 {
-  for( unsigned int i = 0; i < kListeners.size; i++ )
+  for( unsigned int i = 0; i < kListeners.size && cursesEnabled; i++ )
   {
     struct keyListener * l = getListener( i );
     if( k == l->k )

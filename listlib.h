@@ -9,6 +9,7 @@ struct list
 };
 
 struct list * allocList( void );
+void initList( struct list * l );
 void freeList( struct list * l );
 void freeListExcl( struct list * l );
 

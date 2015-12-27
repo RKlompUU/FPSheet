@@ -49,6 +49,7 @@ struct cell * getCellP( struct list * l, uint i );
 struct cell * newC( const char * txt, struct pos * p );
 
 void initSheet( void );
+void exitSheet( void );
 
 
 #endif

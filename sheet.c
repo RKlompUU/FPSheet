@@ -7,6 +7,9 @@
 
 #include "curses_ctrl.h"
 
+
+struct sheet s;
+
 //
 // Utility functions
 //
@@ -73,6 +76,11 @@ void initSheet( void )
 
   subKey( KEY_UP, sheetAction );
   subKey( KEY_DOWN, sheetAction );
+}
+
+void exitSheet( void )
+{
+  freeMap( s.cells );
 }
 
 

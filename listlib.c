@@ -12,19 +12,24 @@
 
 struct list * allocList( void )
 {
-  unsigned int initSize = ALLOC_BLOCK_SIZE;
-
   struct list * l = malloc( sizeof(struct list) );
   CHECK_ALLOC( l );
+
+  initList( l );
+  return l;
+}
+
+void initList( struct list * l )
+{
+  unsigned int initSize = ALLOC_BLOCK_SIZE;
 
   l->xs = malloc( sizeof(void *) * initSize );
   l->size = 0;
   l->allocated = initSize;
 
   CHECK_ALLOC( l->xs );
-
-  return l;
 }
+
 
 void freeListExcl( struct list * l )
 {
