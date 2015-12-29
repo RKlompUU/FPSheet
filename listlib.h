@@ -1,6 +1,9 @@
 #ifndef LISTLIB_H
 #define LISTLIB_H
 
+#include "maindefs.h"
+
+
 struct list
 {
   void ** xs;
@@ -18,6 +21,7 @@ void destroy( struct list * l, unsigned int i );
 void * get( struct list * l, unsigned int i );
 
 int getI( struct list * l, unsigned int i );
+char getC( struct list * l, unsigned int i );
 
 
 struct map

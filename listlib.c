@@ -86,6 +86,10 @@ int getI( struct list * l, unsigned int i )
   return *((int *) get( l, i ));
 }
 
+char getC( struct list * l, uint i )
+{
+  return *((char *) get( l, i ));
+}
 
 struct map * allocMap( int (*cmpKeys)(void *, void *) )
 {

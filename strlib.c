@@ -6,8 +6,12 @@
 #include <stdio.h>
 
 #include "mathlib.h"
+#include "listlib.h"
 
 #define DEFAULT_STR_SIZE 80
+
+#define ALPHA_SIZE 26 // 'Z' - 'A'
+#define ALPHA_START 'A'
 
 char * copyStr( const char * str )
 {
@@ -62,17 +66,55 @@ luint uiLength( uint i )
 
 char * uint2Alpha( uint i )
 {
+  struct list strBuilder;
+  initList( &strBuilder );
+
+  do
+  {
+    i -= 1;
+    char * c = malloc( sizeof(char) );
+    *c = (char) ((uint)ALPHA_START + (i % ALPHA_SIZE));
+    pushBack( &strBuilder, c );
+    i /= ALPHA_SIZE;
+  } while( i > 0 );
+
+  char * str = list2Str( &strBuilder );
+  freeListExcl( &strBuilder );
+
+  return str;
+}
+
+char * list2Str( struct list * l )
+{
+  uint length;
+  if( getC( l, l->size-1 ) == '\0' )
+    length = l->size;
+  else
+    length = l->size + 1;
+
+  char * s = malloc( sizeof(char) * length );
+  for( uint i = 0; i < l->size; i++ )
+  {
+    s[i] = getC( l, i );
+  }
+  s[length-1] = '\0';
+
+  return s;
+}
+
+char * uint2Alpha_( uint i )
+{
   uint l;
   if( i <= 1 )
     l = 1;
   else
-    l = logn( 27, i-1 ) + 1;
+    l = logn( ALPHA_SIZE, i-1 ) + 1;
   char * s = malloc( sizeof(char) * l + 1 );
   for( uint n = 0; n < l; n++ )
   {
-    uint i_ = i % 27;
-    s[n] = (char) ((uint)'A' + i_ - 1);
-    i = i/pow(n+1, 27);
+    i -= 1;
+    s[n] = (char) ((uint)ALPHA_START + (i % ALPHA_SIZE));
+    i /= ALPHA_SIZE;
   }
   s[l] = '\0';
 
