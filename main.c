@@ -3,6 +3,7 @@
 #include "listlib_test.h"
 
 #include <stdlib.h>
+#include "strlib.h"
 
 void exitSignal( int k )
 {
@@ -26,6 +27,8 @@ void dH( int k )
 int main( int argc, char ** argv )
 {
   atexit( atExitProg );
+
+  uint2Alpha( 29 );
 
   //testIntList();
   initCurses();

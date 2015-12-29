@@ -12,5 +12,7 @@ char * uiStr( uint i );
 luint iLength( int i );
 luint uiLength( uint i );
 
+char * uint2Alpha( uint i );
+
 
 #endif

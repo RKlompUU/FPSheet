@@ -53,6 +53,12 @@ void sheetAction( int k )
   case KEY_DOWN:
     gotoOff( s.rowOff+1, s.colOff );
     break;
+  case KEY_LEFT:
+    gotoOff( s.rowOff, s.colOff-1 );
+    break;
+  case KEY_RIGHT:
+    gotoOff( s.rowOff, s.colOff+1 );
+    break;
   }
 }
 
@@ -76,6 +82,8 @@ void initSheet( void )
 
   subKey( KEY_UP, sheetAction );
   subKey( KEY_DOWN, sheetAction );
+  subKey( KEY_LEFT, sheetAction );
+  subKey( KEY_RIGHT, sheetAction );
 }
 
 void exitSheet( void )

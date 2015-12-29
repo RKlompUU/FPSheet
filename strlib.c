@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include "mathlib.h"
+
 #define DEFAULT_STR_SIZE 80
 
 char * copyStr( const char * str )
@@ -56,4 +58,23 @@ luint uiLength( uint i )
   free( s );
 
   return l;
+}
+
+char * uint2Alpha( uint i )
+{
+  uint l;
+  if( i <= 1 )
+    l = 1;
+  else
+    l = logn( 27, i-1 ) + 1;
+  char * s = malloc( sizeof(char) * l + 1 );
+  for( uint n = 0; n < l; n++ )
+  {
+    uint i_ = i % 27;
+    s[n] = (char) ((uint)'A' + i_ - 1);
+    i = i/pow(n+1, 27);
+  }
+  s[l] = '\0';
+
+  return s;
 }
