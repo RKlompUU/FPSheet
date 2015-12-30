@@ -13,6 +13,7 @@ void cursesCtrlLoop( void );
 void drawSheet( void );
 void drawCell( const struct cell * const c );
 void drawHeaders( void );
+void drawFooter( void );
 
 void subKey( int k, void (*callback)(int) );
 void handleEvent( int k );

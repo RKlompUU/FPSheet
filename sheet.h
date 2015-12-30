@@ -21,6 +21,17 @@ struct sheet
 
   uint cW;
   uint cH;
+
+  uint fH;
+  uint fW;
+
+  int curRow;
+  int curCol;
+
+  uint lastR;
+  uint lastC;
+
+  bool draw;
 };
 
 extern struct sheet s;

@@ -40,7 +40,30 @@ void gotoOff( int r, int c )
   s.rowOff = r;
   s.colOff = c;
 
-  drawSheet();
+  s.draw = true;
+}
+
+void moveCur( int r, int c )
+{
+  if( r < 0 || c < 0 )
+    return;
+
+  s.curRow = r;
+  s.curCol = c;
+
+  s.draw = true;
+
+  if( r < s.rowOff )
+    gotoOff( r, s.colOff );
+  int d = r - (int)s.lastR;
+  if( d > 0 )
+    gotoOff( s.rowOff + d, s.colOff );
+
+  if( c < s.colOff )
+    gotoOff( s.rowOff, c );
+  d = c - (int)s.lastC;
+  if( d > 0 )
+    gotoOff( s.rowOff, s.colOff + d );
 }
 
 void sheetAction( int k )
@@ -48,16 +71,16 @@ void sheetAction( int k )
   switch( k )
   {
   case KEY_UP:
-    gotoOff( s.rowOff-1, s.colOff );
+    moveCur( s.curRow-1, s.curCol );
     break;
   case KEY_DOWN:
-    gotoOff( s.rowOff+1, s.colOff );
+    moveCur( s.curRow+1, s.curCol );
     break;
   case KEY_LEFT:
-    gotoOff( s.rowOff, s.colOff-1 );
+    moveCur( s.curRow, s.curCol-1 );
     break;
   case KEY_RIGHT:
-    gotoOff( s.rowOff, s.colOff+1 );
+    moveCur( s.curRow, s.curCol+1 );
     break;
   }
 }
@@ -77,8 +100,16 @@ void initSheet( void )
   s.hW = 2;
   s.hH = 2;
 
-  s.cW = 5;
+  s.cW = 10;
   s.cH = 1;
+
+  s.fH = 1;
+  s.fW = s.wW;
+
+  s.curRow = 0;
+  s.curCol = 0;
+
+  s.draw = true;
 
   subKey( KEY_UP, sheetAction );
   subKey( KEY_DOWN, sheetAction );

@@ -6,6 +6,7 @@
 
 #include <ncurses.h>
 
+#include <string.h> // strlen
 
 // struct sheet s; < extern
 
@@ -37,6 +38,8 @@ void initCurses( void )
   noecho();
   nonl();
 
+  curs_set( 0 );
+
   initList( &kListeners );
 
   cursesEnabled = true;
@@ -61,6 +64,11 @@ void cursesCtrlLoop( void )
 {
   while( cursesEnabled )
   {
+    if( s.draw )
+    {
+      drawSheet();
+      s.draw = false;
+    }
     int k = getch();
 
     mvprintw(0, 0, "Key: %u", k);
@@ -85,6 +93,8 @@ void render( void )
 void drawSheet()
 {
   drawHeaders();
+  drawFooter();
+  mvaddch( 0, 0, ' ' );
 }
 
 void drawCell( const struct cell * const c )
@@ -133,6 +143,8 @@ void drawHeaders( void )
     mvaddch( (int)r, (int)s.hW-1, '|' );
   }
 
+  s.lastR = lastN;
+
 
   //
   // Column letters
@@ -146,7 +158,7 @@ void drawHeaders( void )
   for( uint n = (uint) s.colOff; n <= lastC; n++ )
   {
     uint c = s.hW + (n-(uint)s.colOff)*bcW + bcW/2;
-    char * str = uint2Alpha( n+1 );
+    char * str = uint2Alpha( n );
     mvaddstr( 0, (int) c, str ); // Save conversion
     free( str );
   }
@@ -156,9 +168,21 @@ void drawHeaders( void )
     mvaddch( (int)s.hH-1, (int)c, '-' );
   }
   mvaddch( (int)s.hH-1, (int)s.hW-1, ',' );
-  mvaddch( (int)s.wH-1, (int)s.wW-1, ' ' );
+
+  s.lastC = lastC;
 
   refresh();
+}
+
+void drawFooter( void )
+{
+  char * curPos = curPos2Str( (uint)s.curRow, (uint)s.curCol );
+
+  cleanArea( s.wH-s.fH, s.wW-s.fW, s.wH, s.wW);
+
+  mvaddstr( (int)s.wH-1, (int)s.wW - (int)strlen(curPos), curPos );
+
+  free( curPos );
 }
 
 void handleEvent( int k )

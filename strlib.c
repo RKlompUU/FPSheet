@@ -7,6 +7,7 @@
 
 #include "mathlib.h"
 #include "listlib.h"
+#include "safety.h"
 
 #define DEFAULT_STR_SIZE 80
 
@@ -16,6 +17,7 @@
 char * copyStr( const char * str )
 {
   char * p = malloc( sizeof(char) * (strlen(str) + 1) );
+  CHECK_ALLOC( p )
   strcpy( p, str );
 
   return p;
@@ -24,6 +26,7 @@ char * copyStr( const char * str )
 char * concatStrs( const char * str1, const char * str2 )
 {
   char * p = malloc( sizeof(char) * (strlen(str1) + strlen(str2) + 1));
+  CHECK_ALLOC( p )
   strcpy( p, str1 );
   strcpy( p + sizeof(char) * strlen(str1), str2 );
 
@@ -33,6 +36,7 @@ char * concatStrs( const char * str1, const char * str2 )
 char * uiStr( uint i )
 {
   char * s = malloc( sizeof(char) * DEFAULT_STR_SIZE );
+  CHECK_ALLOC( s )
   sprintf( s, "%u", i );
 
   return s;
@@ -41,6 +45,7 @@ char * uiStr( uint i )
 char * iStr( int i )
 {
   char * s = malloc( sizeof(char) * DEFAULT_STR_SIZE );
+  CHECK_ALLOC( s )
   sprintf( s, "%d", i );
 
   return s;
@@ -66,6 +71,8 @@ luint uiLength( uint i )
 
 char * uint2Alpha( uint i )
 {
+  i++; // This function is 1 based (i = 1 -> A)
+
   struct list strBuilder;
   initList( &strBuilder );
 
@@ -73,6 +80,7 @@ char * uint2Alpha( uint i )
   {
     i -= 1;
     char * c = malloc( sizeof(char) );
+    CHECK_ALLOC( c )
     *c = (char) ((uint)ALPHA_START + (i % ALPHA_SIZE));
     pushBack( &strBuilder, c );
     i /= ALPHA_SIZE;
@@ -93,6 +101,7 @@ char * list2Str( struct list * l )
     length = l->size + 1;
 
   char * s = malloc( sizeof(char) * length );
+  CHECK_ALLOC( s )
   for( uint i = 0; i < l->size; i++ )
   {
     s[i] = getC( l, i );
@@ -102,21 +111,23 @@ char * list2Str( struct list * l )
   return s;
 }
 
-char * uint2Alpha_( uint i )
+char * curPos2Str( uint r, uint c )
 {
-  uint l;
-  if( i <= 1 )
-    l = 1;
-  else
-    l = logn( ALPHA_SIZE, i-1 ) + 1;
-  char * s = malloc( sizeof(char) * l + 1 );
-  for( uint n = 0; n < l; n++ )
-  {
-    i -= 1;
-    s[n] = (char) ((uint)ALPHA_START + (i % ALPHA_SIZE));
-    i /= ALPHA_SIZE;
-  }
-  s[l] = '\0';
+  size_t t = sizeofUIntStr( r );
+  char * rStr = malloc( t ); // sizeofUIntStr(r) );
+  CHECK_ALLOC( rStr )
+  sprintf( rStr, "%u", r );
+  char * cStr = uint2Alpha( c );
 
+  char * s = concatStrs( rStr, cStr );
+  free( rStr );
+  free( cStr );
   return s;
+}
+
+size_t sizeofUIntStr( uint x )
+{
+  if( x == 0 )
+    return 2;
+  return (size_t)((ceil(log10(x))+1)*sizeof(char)) + 1;
 }

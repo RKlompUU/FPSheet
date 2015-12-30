@@ -28,8 +28,6 @@ int main( int argc, char ** argv )
 {
   atexit( atExitProg );
 
-  uint2Alpha( 29 );
-
   //testIntList();
   initCurses();
   initSheet();

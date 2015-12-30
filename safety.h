@@ -14,7 +14,9 @@
 #define CHECK_ALLOC( p ) \
   if( p == NULL ) \
   { \
-    crash( "Allocation failed!" ); \
+    char str___[300]; \
+    sprintf(str___, "Allocation failed! %s:%d", __FILE__, __LINE__); \
+    crash( str___ ); \
   }
 #else
 #define CHECK_ALLOC( p ) ;
