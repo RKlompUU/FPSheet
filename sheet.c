@@ -109,6 +109,9 @@ void initSheet( void )
   s.curRow = 0;
   s.curCol = 0;
 
+  s.prevRow = 0;
+  s.prevCol = 0;
+
   s.draw = true;
 
   subKey( KEY_UP, sheetAction );

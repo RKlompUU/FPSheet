@@ -4,6 +4,8 @@
 
 #include "strlib.h"
 
+#include <stdlib.h>
+
 #include <ncurses.h>
 
 #include <string.h> // strlen
@@ -67,6 +69,7 @@ void cursesCtrlLoop( void )
     if( s.draw )
     {
       drawSheet();
+      refresh();
       s.draw = false;
     }
     int k = getch();
@@ -93,6 +96,7 @@ void render( void )
 void drawSheet()
 {
   drawHeaders();
+  drawCursor();
   drawFooter();
   mvaddch( 0, 0, ' ' );
 }
@@ -112,38 +116,84 @@ void cleanArea( uint x1, uint y1, uint x2, uint y2 )
   }
 }
 
+void cellWindowPos_( uint r, uint c, uint hH, uint hW, uint * x, uint * y, enum alignment alignHor, enum alignment alignVert )
+{
+  if( x )
+  {
+    uint bcH = s.cH + 1;
+    *x = hH + (r-(uint)s.rowOff)*bcH;
+
+    switch( alignVert )
+    {
+      case ALIGN_CENTER:
+        *x += bcH/2;
+        break;
+      case ALIGN_RIGHT:
+        *x += bcH;
+        break;
+      case ALIGN_LEFT: break;
+    }
+    (*x)--;
+  }
+
+  if( y )
+  {
+    uint bcW = s.cW + 1;
+    *y = hW + (c-(uint)s.colOff)*bcW;
+
+    switch( alignHor )
+    {
+      case ALIGN_CENTER:
+        *y += bcW/2;
+        break;
+      case ALIGN_RIGHT:
+        *y += bcW;
+        break;
+      case ALIGN_LEFT: break;
+    }
+    (*y)--;
+  }
+}
+void cellWindowPos( uint r, uint c, uint * x, uint * y, enum alignment alignHor, enum alignment alignVert )
+{
+  cellWindowPos_( r, c, s.hH, s.hW, x, y, alignHor, alignVert );
+}
+
 void drawHeaders( void )
 {
-  uint oldHW = s.hW;
-
+  s.oldHW = s.hW;
 
   //
   // Row numbers
   //
 
   uint bcH = s.cH + 1; // Bordered cell height
-  uint lastN = (uint)s.rowOff + (s.wH - s.hH - bcH - 1)/bcH; // - bcH, - 1 to prevent a possible half-row
+  uint lastR = (uint)s.rowOff + (s.wH - s.hH - bcH - 1)/bcH; // - bcH, - 1 to prevent a possible half-row
   // This conversion from luint to uint is save:
   //    The length of row numbers will never even come close to the limits of uint
   //    , since long before that point other limits would've been reached already
-  s.hW = (uint) uiLength( lastN ) + 1; // + 1 for the border
+  s.hW = (uint) uiLength( lastR ) + 1; // + 1 for the border
 
-  cleanArea( s.hH, 0, s.wH, oldHW );
+  if( s.oldHW != s.hW )
+    cleanArea( s.hH, 0, s.wH, s.wW );
+  else
+    cleanArea( s.hH, 0, s.wH, s.oldHW );
 
-  for( uint n = (uint) s.rowOff; n <= lastN; n++ )
+  uint x;
+  for( uint r = (uint) s.rowOff; r <= lastR; r++ )
   {
-    uint r = s.hH + (n-(uint)s.rowOff)*bcH + bcH/2;
-    char * str = uiStr( n );
-    mvaddstr( (int)r, 0, str ); // Save conversion
+    cellWindowPos( r, 0, &x, NULL, ALIGN_CENTER, ALIGN_CENTER );
+    char * str = uiStr( r );
+    mvaddstr( (int)x, 0, str ); // Save conversion
     free( str );
   }
   // Row numbers border
-  for( uint r = s.hH; r < s.wH; r++ )
+  for( x = s.hH; x < s.wH; x++ )
   {
-    mvaddch( (int)r, (int)s.hW-1, '|' );
+    mvaddch( (int)x, (int)s.hW-1, '|' );
   }
 
-  s.lastR = lastN;
+  s.lastR = lastR;
 
 
   //
@@ -155,23 +205,75 @@ void drawHeaders( void )
 
   cleanArea( 0, 0, s.hH, s.wW );
 
-  for( uint n = (uint) s.colOff; n <= lastC; n++ )
+  uint y;
+  for( uint c = (uint) s.colOff; c <= lastC; c++ )
   {
-    uint c = s.hW + (n-(uint)s.colOff)*bcW + bcW/2;
-    char * str = uint2Alpha( n );
-    mvaddstr( 0, (int) c, str ); // Save conversion
+    cellWindowPos( 0, c, NULL, &y, ALIGN_CENTER, ALIGN_CENTER );
+    char * str = uint2Alpha( c );
+    mvaddstr( 0, (int)y, str ); // Save conversion
     free( str );
   }
 
-  for( uint c = s.hW; c < s.wW; c++ )
+  for( y = s.hW; y < s.wW; y++ )
   {
-    mvaddch( (int)s.hH-1, (int)c, '-' );
+    mvaddchu( s.hH-1, y, '-' );
   }
-  mvaddch( (int)s.hH-1, (int)s.hW-1, ',' );
+  mvaddchu( s.hH-1, s.hW-1, ',' );
 
   s.lastC = lastC;
+}
 
-  refresh();
+
+void drawCursorAs( const char * const str, uint row, uint col )
+{
+  DEBUG_ASSERT(strlen(str) == 6);
+
+  uint r;
+  uint c;
+
+  if( (int)col != s.colOff )
+  {
+    cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_CENTER );
+    mvaddchu( r, c, (uint)str[0] );
+    if( (int)row != s.rowOff )
+    {
+      cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_LEFT );
+      mvaddchu( r, c, (uint)str[2] );
+    }
+
+    cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
+    mvaddchu( r, c, (uint)str[3] );
+  }
+
+  if( (int)row != s.rowOff )
+  {
+    cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_LEFT );
+    mvaddchu( r, c+1, (uint)str[1] );
+
+    cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_LEFT );
+    mvaddchu( r, c, (uint)str[5] );
+    mvaddchu( r, c-1, (uint)str[1] );
+  }
+
+  cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
+  mvaddchu( r, c+1, (uint)str[1] );
+
+
+  cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_CENTER );
+  mvaddchu( r, c, (uint)str[0] );
+
+  cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_RIGHT );
+  mvaddchu( r, c, (uint)str[4] );
+  mvaddchu( r, c-1, (uint)str[1] );
+}
+
+void drawCursor( void )
+{
+  drawCursorAs( "      ", (uint)s.prevRow, (uint)s.prevCol );
+  drawCursorAs( "|-,`'.", (uint)s.curRow, (uint)s.curCol );
+
+  s.prevRow = s.curRow;
+  s.prevCol = s.curCol;
 }
 
 void drawFooter( void )
@@ -214,4 +316,9 @@ void unsubKey( int k, void (*callback)(int) )
     if( l->k == k && l->callback == callback )
       destroy( &kListeners, i-- );
   }
+}
+
+void mvaddchu( const uint x, const uint y, const uint c )
+{
+  mvaddch( (int)x, (int)y, c );
 }

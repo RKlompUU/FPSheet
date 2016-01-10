@@ -19,6 +19,8 @@ struct sheet
   uint hW;
   uint hH;
 
+  uint oldHW;
+
   uint cW;
   uint cH;
 
@@ -27,6 +29,8 @@ struct sheet
 
   int curRow;
   int curCol;
+  int prevRow;
+  int prevCol;
 
   uint lastR;
   uint lastC;
