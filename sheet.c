@@ -66,7 +66,7 @@ void moveCur( int r, int c )
     gotoOff( s.rowOff, s.colOff + d );
 }
 
-void sheetAction( int k )
+void moveCursorKey( int k )
 {
   switch( k )
   {
@@ -81,6 +81,34 @@ void sheetAction( int k )
     break;
   case KEY_RIGHT:
     moveCur( s.curRow, s.curCol+1 );
+    break;
+  }
+}
+
+void modeChange( int k )
+{
+  switch( s.mode )
+  {
+  case MODE_NAVIG:
+    switch( k )
+    {
+    case KEY_ENTER:
+    case 'i':
+      unsubGroup( GROUP_SUB_NAVIG, moveCursorKey );
+
+      s.mode = MODE_EDIT;
+      break;
+    }
+    break;
+  case MODE_EDIT:
+    switch( k )
+    {
+    case KEY_ENTER:
+      subGroup( GROUP_SUB_NAVIG, moveCursorKey );
+
+      s.mode = MODE_NAVIG;
+      break;
+    }
     break;
   }
 }
@@ -114,10 +142,17 @@ void initSheet( void )
 
   s.draw = true;
 
-  subKey( KEY_UP, sheetAction );
-  subKey( KEY_DOWN, sheetAction );
-  subKey( KEY_LEFT, sheetAction );
-  subKey( KEY_RIGHT, sheetAction );
+  s.mode = MODE_NAVIG;
+
+  addSubToGroup( KEY_UP, GROUP_SUB_NAVIG );
+  addSubToGroup( KEY_DOWN, GROUP_SUB_NAVIG );
+  addSubToGroup( KEY_LEFT, GROUP_SUB_NAVIG );
+  addSubToGroup( KEY_RIGHT, GROUP_SUB_NAVIG );
+
+  subGroup( GROUP_SUB_NAVIG, moveCursorKey );
+
+  subKey( KEY_ENTER, modeChange );
+  subKey( 'i', modeChange );
 }
 
 void exitSheet( void )

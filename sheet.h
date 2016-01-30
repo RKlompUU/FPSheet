@@ -6,9 +6,17 @@
 #include "listlib.h"
 #include <stdbool.h>
 
+enum mode
+{
+  MODE_NAVIG,
+  MODE_EDIT
+};
+
 struct sheet
 {
   struct map * cells;
+
+  enum mode mode;
 
   int rowOff;
   int colOff;

@@ -26,7 +26,20 @@ enum alignment
 void cellWindowPos( uint r, uint c, uint * x, uint * y, enum alignment alignHor, enum alignment alignVert );
 void cellWindowPos_( uint r, uint c, uint hH, uint hW, uint * x, uint * y, enum alignment alignHor, enum alignment alignVert );
 
+
+enum groupid
+{
+  GROUP_SUB_NAVIG,
+  GROUP_SUB_EDIT
+};
+void addSubToGroup( int k, enum groupid g );
+
 void subKey( int k, void (*callback)(int) );
+void subGroup( enum groupid g, void (*callback)(int) );
+
+void unsubKey( int k, void (*callback)(int) );
+void unsubGroup( enum groupid g, void (*callback)(int) );
+
 void handleEvent( int k );
 
 void mvaddchu( const uint x, const uint y, const uint c );

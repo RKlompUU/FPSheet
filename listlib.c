@@ -63,9 +63,9 @@ void pushBack( struct list * l, void * x )
 void destroy( struct list * l, unsigned int i )
 {
   free( l->xs[i] );
-  memmove( l->xs + sizeof(void *) * i,
-           l->xs + sizeof(void *) * l->size,
-           l->size - i );
+  memmove( &l->xs[i],
+           &l->xs[i+1],
+           sizeof(void *) * (l->size - (i+1)) );
   l->size--;
 }
 

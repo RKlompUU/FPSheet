@@ -2,6 +2,7 @@
 #include "listlib.h"
 #include "safety.h"
 
+#include "memlib.h"
 #include "strlib.h"
 
 #include <stdlib.h>
@@ -25,6 +26,8 @@ struct keyListener * getListener( unsigned int i )
   return (struct keyListener *)get( &kListeners, i );
 }
 
+struct list subGroups; // group subscriptions
+
 bool cursesEnabled = false;
 bool isCursesEnabled( void )
 {
@@ -43,6 +46,11 @@ void initCurses( void )
   curs_set( 0 );
 
   initList( &kListeners );
+  initList( &subGroups );
+  for( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_EDIT; i++ )
+  {
+    pushBack( &subGroups, allocList() );
+  }
 
   cursesEnabled = true;
 }
@@ -54,6 +62,10 @@ void exitCurses( bool cleanupMem )
     if( cleanupMem )
     {
       freeListExcl( &kListeners );
+
+      for( uint i = 0; i < subGroups.size; i++ )
+        freeList( (struct list *)get(&subGroups, i) );
+      freeListExcl( &subGroups );
     }
 
     endwin();
@@ -203,6 +215,9 @@ void drawHeaders( void )
   uint bcW = s.cW + 1;
   uint lastC = (uint)s.colOff + (s.wW - s.hW - bcW - 1)/bcW;
 
+  if( s.curCol > (int)lastC ) // Both safe convertions
+    s.curCol = (int)lastC;
+
   cleanArea( 0, 0, s.hH, s.wW );
 
   uint y;
@@ -231,10 +246,12 @@ void drawCursorAs( const char * const str, uint row, uint col )
   uint r;
   uint c;
 
+
   if( (int)col != s.colOff )
   {
     cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_CENTER );
     mvaddchu( r, c, (uint)str[0] );
+  /*
     if( (int)row != s.rowOff )
     {
       cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_LEFT );
@@ -243,8 +260,14 @@ void drawCursorAs( const char * const str, uint row, uint col )
 
     cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
     mvaddchu( r, c, (uint)str[3] );
+  */
   }
-
+  else
+  {
+    cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
+    mvaddchu( r, c+1, (uint)str[1] );
+  }
+/*
   if( (int)row != s.rowOff )
   {
     cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_LEFT );
@@ -254,10 +277,8 @@ void drawCursorAs( const char * const str, uint row, uint col )
     mvaddchu( r, c, (uint)str[5] );
     mvaddchu( r, c-1, (uint)str[1] );
   }
-
   cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
   mvaddchu( r, c+1, (uint)str[1] );
-
 
   cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_CENTER );
   mvaddchu( r, c, (uint)str[0] );
@@ -265,6 +286,7 @@ void drawCursorAs( const char * const str, uint row, uint col )
   cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_RIGHT );
   mvaddchu( r, c, (uint)str[4] );
   mvaddchu( r, c-1, (uint)str[1] );
+*/
 }
 
 void drawCursor( void )
@@ -297,6 +319,11 @@ void handleEvent( int k )
   }
 }
 
+void addSubToGroup( int k, enum groupid g )
+{
+  pushBack( (struct list *)get(&subGroups, g), newI(k) );
+}
+
 void subKey( int k, void (*callback)(int) )
 {
   struct keyListener * l = malloc( sizeof(struct keyListener) );
@@ -308,6 +335,15 @@ void subKey( int k, void (*callback)(int) )
   pushBack( &kListeners, l );
 }
 
+void subGroup( enum groupid g, void (*callback)(int) )
+{
+  struct list * groupList = (struct list *)get( &subGroups, g );
+  for( uint i = 0; i < groupList->size; i++ )
+  {
+    subKey( getI(groupList, i), callback );
+  }
+}
+
 void unsubKey( int k, void (*callback)(int) )
 {
   for( unsigned int i = 0; i < kListeners.size; i++ )
@@ -317,6 +353,16 @@ void unsubKey( int k, void (*callback)(int) )
       destroy( &kListeners, i-- );
   }
 }
+
+void unsubGroup( enum groupid g, void (*callback)(int) )
+{
+  struct list * groupList = (struct list *)get( &subGroups, g );
+  for( uint i = 0; i < groupList->size; i++ )
+  {
+    unsubKey( getI(groupList, i), callback );
+  }
+}
+
 
 void mvaddchu( const uint x, const uint y, const uint c )
 {
