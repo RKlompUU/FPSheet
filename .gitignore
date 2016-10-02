@@ -1,3 +1,6 @@
 *.swp
 .obj/
 fpsheet
+.settings/
+.project
+.cproject

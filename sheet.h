@@ -69,7 +69,7 @@ struct cell * findCellP( struct map * cells, struct pos p );
 struct cell * findCellP2( struct map * cells, uint row, uint col );
 struct cell * getCellP( struct list * l, uint i );
 
-struct cell * newC( const char * txt, struct pos * p );
+struct cell * newC( struct pos * p );
 
 void initSheet( void );
 void exitSheet( void );

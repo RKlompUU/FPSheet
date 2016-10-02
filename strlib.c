@@ -5,6 +5,8 @@
 
 #include <stdio.h>
 
+#include "maindefs.h"
+
 #include "mathlib.h"
 #include "listlib.h"
 #include "safety.h"
@@ -31,6 +33,24 @@ char * concatStrs( const char * str1, const char * str2 )
   strcpy( p + sizeof(char) * strlen(str1), str2 );
 
   return p;
+}
+
+char * appendChar( char * str, const char c )
+{
+    long unsigned int newSize;
+    if( str )
+    {
+        newSize = sizeof(char) * (strlen(str) + 2); // + 1 for '\0' and + 1 for c
+    }
+    else
+    {
+        newSize = sizeof(char) * 2;
+    }
+    char * p = realloc( str, newSize );
+    p[newSize-2] = c;
+    p[newSize-1] = '\0';
+
+    return p;
 }
 
 char * uiStr( uint i )

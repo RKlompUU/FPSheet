@@ -11,3 +11,11 @@ int * newI( int x )
   *p = x;
   return p;
 }
+
+uint * newUI( uint x )
+{
+    uint * p = malloc( sizeof(uint) );
+    CHECK_ALLOC( p );
+    *p = x;
+    return p;
+}

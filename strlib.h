@@ -9,6 +9,8 @@
 char * copyStr( const char * str );
 char * concatStrs( const char * str1, const char * str2 );
 
+char * appendChar( char * str, const char c );
+
 char * iStr( int i );
 char * uiStr( uint i );
 
