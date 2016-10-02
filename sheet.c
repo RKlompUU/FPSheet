@@ -61,11 +61,11 @@ void moveCur( int r,
 void editCell( int k )
 {
     struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
-    if( c == NULL )
+    if ( c == NULL )
     {
         struct pos * p = malloc( sizeof(struct pos) );
-        p->col = (uint)s.curCol;
-        p->row = (uint)s.curRow;
+        p->col = (uint) s.curCol;
+        p->row = (uint) s.curRow;
         c = newC( p );
     }
     c->txt = appendChar( c->txt, (char) k );

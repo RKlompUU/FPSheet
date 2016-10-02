@@ -8,71 +8,75 @@
 
 enum mode
 {
-  MODE_NAVIG,
-  MODE_EDIT
+    MODE_NAVIG,
+    MODE_EDIT
 };
 
 struct sheet
 {
-  struct map * cells;
+    struct map * cells;
 
-  enum mode mode;
+    enum mode mode;
 
-  int rowOff;
-  int colOff;
+    int rowOff;
+    int colOff;
 
-  uint wH;
-  uint wW;
+    uint wH;
+    uint wW;
 
-  uint hW;
-  uint hH;
+    uint hW;
+    uint hH;
 
-  uint oldHW;
+    uint oldHW;
 
-  uint cW;
-  uint cH;
+    uint cW;
+    uint cH;
 
-  uint fH;
-  uint fW;
+    uint fH;
+    uint fW;
 
-  int curRow;
-  int curCol;
-  int prevRow;
-  int prevCol;
+    int curRow;
+    int curCol;
+    int prevRow;
+    int prevCol;
 
-  uint lastR;
-  uint lastC;
+    uint lastR;
+    uint lastC;
 
-  bool draw;
+    bool draw;
 };
 
 extern struct sheet s;
 
 struct pos
 {
-  uint row;
-  uint col;
+    uint row;
+    uint col;
 };
 
 struct cell
 {
-  char * txt;
+    char * txt;
 
-  struct pos * p;
+    struct pos * p;
 
-  bool uFlag;
+    bool uFlag;
 };
 
-struct pos getPos( struct list * l, uint i );
+struct pos getPos( struct list * l,
+                   uint i );
 
-struct cell * findCellP( struct map * cells, struct pos p );
-struct cell * findCellP2( struct map * cells, uint row, uint col );
-struct cell * getCellP( struct list * l, uint i );
+struct cell * findCellP( struct map * cells,
+                         struct pos p );
+struct cell * findCellP2( struct map * cells,
+                          uint row,
+                          uint col );
+struct cell * getCellP( struct list * l,
+                        uint i );
 
 struct cell * newC( struct pos * p );
 
 void initSheet( void );
 void exitSheet( void );
-
 
 #endif

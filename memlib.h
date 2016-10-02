@@ -6,5 +6,4 @@
 int * newI( int x );
 uint * newUI( uint x );
 
-
 #endif

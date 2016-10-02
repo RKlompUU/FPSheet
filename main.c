@@ -7,36 +7,37 @@
 
 void exitSignal( int k )
 {
-  exitCurses( true );
+    exitCurses( true );
 }
 
 void atExitProg( void )
 {
-  if( isCursesEnabled() )
-  {
-    exitCurses( true );
-    exitSheet();
-  }
+    if ( isCursesEnabled() )
+    {
+        exitCurses( true );
+        exitSheet();
+    }
 }
 
 void dH( int k )
 {
-  drawHeaders();
+    drawHeaders();
 }
 
-int main( int argc, char ** argv )
+int main( int argc,
+          char ** argv )
 {
-  atexit( atExitProg );
+    atexit( atExitProg );
 
-  //testIntList();
-  initCurses();
-  initSheet();
+    //testIntList();
+    initCurses();
+    initSheet();
 
-  subKey( KEY_END, exitSignal );
-  subKey( 'h', dH );
+    subKey( KEY_END, exitSignal );
+    subKey( 'h', dH );
 
-  cursesCtrlLoop();
-  exitSheet();
+    cursesCtrlLoop();
+    exitSheet();
 
-  return 0;
+    return 0;
 }

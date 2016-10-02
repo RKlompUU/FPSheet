@@ -115,13 +115,13 @@ void drawSheet()
     render();
 
     mvaddch( 0, 0, ' ' );
-    switch( s.mode )
+    switch ( s.mode )
     {
         case MODE_NAVIG:
-        mvaddch( (int)s.wH-1, 0, 'M' );
+        mvaddch( (int )s.wH - 1, 0, 'M' );
             break;
         case MODE_EDIT:
-        mvaddch( (int)s.wH-1, 0, 'E' );
+        mvaddch( (int )s.wH - 1, 0, 'E' );
             break;
     }
 }

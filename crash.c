@@ -4,17 +4,15 @@
 
 #include <stdlib.h>
 
-
 void crash( const char * reason )
 {
-  if( isCursesEnabled() )
-    exitCurses( true );
+    if ( isCursesEnabled() ) exitCurses( true );
 
-  const char * crashReason = concatStrs( "Crash! Reason: ", reason );
-  if( crashReason != NULL )
-  {
-    perror( crashReason );
-  }
+    const char * crashReason = concatStrs( "Crash! Reason: ", reason );
+    if ( crashReason != NULL )
+    {
+        perror( crashReason );
+    }
 
-  exit( EXIT_FAILURE );
+    exit( EXIT_FAILURE );
 }
