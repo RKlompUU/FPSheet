@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 
+#include <string.h>
 #include <curses.h>
 
 #include "curses_ctrl.h"
@@ -67,11 +68,29 @@ void editCell( int k )
         p->col = (uint) s.curCol;
         p->row = (uint) s.curRow;
         c = newC( p );
+        c->txt = malloc( sizeof(char) );
+        c->txt[0] = '\0';
     }
-    c->txt = appendChar( c->txt, (char) k );
-
-    c->uFlag = true;
-    s.draw = true;
+    switch( k )
+    {
+      case KEY_BACKSPACE:
+      case 127:
+      {
+      long unsigned int length = strlen( c->txt );
+      if( length > 0 )
+      {
+        c->txt[length-1] = '\0';
+        c->uFlag = true;
+        s.draw = true;
+      }
+      }
+        break;
+      default:
+      c->txt = appendChar( c->txt, (char) k );
+      c->uFlag = true;
+      s.draw = true;
+        break;
+    }
 }
 
 void moveCursorKey( int k )
@@ -163,10 +182,13 @@ void initSheet( void )
     addSubToGroup( KEY_LEFT, GROUP_SUB_NAVIG );
     addSubToGroup( KEY_RIGHT, GROUP_SUB_NAVIG );
 
-    for ( int c = 'a'; c <= 'z'; c++ )
+    for ( int c = ' '; c <= '~'; c++ )
     {
         addSubToGroup( c, GROUP_SUB_EDIT );
     }
+    addSubToGroup( KEY_BACKSPACE, GROUP_SUB_EDIT );
+    addSubToGroup( 127, GROUP_SUB_EDIT );
+    //
 //    for ( int c = 'A'; c <= 'Z'; c++ )
 //    {
 //        addSubToGroup( c, GROUP_SUB_EDIT );

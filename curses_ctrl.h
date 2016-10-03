@@ -11,7 +11,7 @@ bool isCursesEnabled( void );
 void cursesCtrlLoop( void );
 
 void drawSheet( void );
-void drawCell( const struct cell * const c );
+void drawCell( const struct cell * const c, bool inBorders );
 void drawHeaders( void );
 void drawCursor( void );
 void drawFooter( void );

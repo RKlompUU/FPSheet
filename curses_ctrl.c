@@ -34,6 +34,18 @@ bool isCursesEnabled( void )
     return cursesEnabled;
 }
 
+void cleanArea( uint x1,
+                uint y1,
+                uint x2,
+                uint y2 );
+
+void cellWindowPos( uint r,
+                    uint c,
+                    uint * x,
+                    uint * y,
+                    enum alignment alignHor,
+                    enum alignment alignVert );
+
 void initCurses( void )
 {
     initscr();
@@ -95,44 +107,85 @@ void cursesCtrlLoop( void )
 
 void render( void )
 {
-    for ( unsigned int i = 0; i < *s.cells->pSize; i++ )
+    uint x1,y1,x2,y2;
+
+    cellWindowPos( (uint)s.rowOff, (uint)s.colOff,
+                   &x1, &y1,
+                   ALIGN_LEFT,
+                   ALIGN_LEFT );
+    cellWindowPos( s.lastR+1, s.lastC+1,
+                   &x2, &y2,
+                   ALIGN_RIGHT,
+                   ALIGN_RIGHT );
+
+    cleanArea( x1+1, y1+1, x2+1, y2+1 );
+
+    struct cell * cCurFocus = NULL;
+    for ( unsigned int row = (uint)s.rowOff; row <= (uint)s.lastR; row++ )
     {
-        struct cell * c = getCellP( s.cells->vals, i );
-        if ( c->uFlag )
+        for ( unsigned int col = (uint)s.colOff; col <= (uint)s.lastC; col++ )
         {
-            drawCell( c );
-            c->uFlag = false;
+            struct cell * c = findCellP2( s.cells, row, col );
+            if( c )
+            {
+                if( row == (uint)s.curRow &&
+                    col == (uint)s.curCol )
+                {
+                    cCurFocus = c;
+                    continue; // Draw currently focused cell last
+                }
+                drawCell( c, true );
+            }
         }
+    }
+
+    if( cCurFocus )
+    {
+      drawCell( cCurFocus, false );
     }
 }
 
 void drawSheet()
 {
     drawHeaders();
-    drawCursor();
     drawFooter();
 
     render();
+    drawCursor();
 
     mvaddch( 0, 0, ' ' );
     switch ( s.mode )
     {
         case MODE_NAVIG:
-        mvaddch( (int )s.wH - 1, 0, 'M' );
+        mvaddch( (int)s.wH - 1, 0, 'M' );
             break;
         case MODE_EDIT:
-        mvaddch( (int )s.wH - 1, 0, 'E' );
+        mvaddch( (int)s.wH - 1, 0, 'E' );
             break;
     }
 }
 
-void drawCell( const struct cell * const c )
+void drawCell( const struct cell * const c, bool inBorders )
 {
     uint x;
     uint y;
-    cellWindowPos( (uint) s.rowOff + c->p->row, (uint) s.colOff + c->p->col, &x,
-                   &y, ALIGN_LEFT, ALIGN_CENTER );
-    mvaddstr( (int )x, (int )y, c->txt );
+    cellWindowPos( c->p->row,// - (uint) s.rowOff,
+                   c->p->col,// - (uint) s.colOff,
+                   &x,
+                   &y,
+                   ALIGN_LEFT,
+                   ALIGN_CENTER );
+    uint n;
+    if( inBorders )
+    {
+        n = s.cW;
+    }
+    else
+    {
+        n = s.wW-y-1;
+    }
+
+    mvaddnstr( (int)x, (int)y+1, c->txt, (int)n );
 }
 
 void cleanArea( uint x1,
@@ -325,7 +378,7 @@ void drawCursorAs( const char * const str,
 
 void drawCursor( void )
 {
-    drawCursorAs( "      ", (uint) s.prevRow, (uint) s.prevCol );
+    //drawCursorAs( "      ", (uint) s.prevRow, (uint) s.prevCol );
     drawCursorAs( "|-,`'.", (uint) s.curRow, (uint) s.curCol );
 
     s.prevRow = s.curRow;
