@@ -29,6 +29,8 @@ struct keyListener * getListener( unsigned int i )
 struct list subGroups; // group subscriptions
 
 bool cursesEnabled = false;
+bool keepCursesRunning = false;
+
 bool isCursesEnabled( void )
 {
     return cursesEnabled;
@@ -84,11 +86,13 @@ void exitCurses( bool cleanupMem )
     }
 
     cursesEnabled = false;
+    keepCursesRunning = false;
 }
 
 void cursesCtrlLoop( void )
 {
-    while ( cursesEnabled )
+    keepCursesRunning = true;
+    while ( keepCursesRunning )
     {
         if ( s.draw )
         {

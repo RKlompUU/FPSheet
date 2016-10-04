@@ -4,3 +4,5 @@ fpsheet
 .settings/
 .project
 .cproject
+*.txt
+vgcore.*
