@@ -3,8 +3,6 @@
 
 
 void init_ghci( void );
-
-void write_ghci( const char * str );
-const char * read_ghci( void );
+char * ghci_exec( const char * expr );
 
 #endif

@@ -86,7 +86,7 @@ void editCell( int k )
       }
         break;
       default:
-      c->txt = appendChar( c->txt, (char) k );
+      appendChar( &c->txt, (char) k );
       c->uFlag = true;
       s.draw = true;
         break;

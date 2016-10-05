@@ -1,6 +1,8 @@
 #include "maindefs.h"
 #include "ghci.h"
 
+#include <stdbool.h>
+
 #include <string.h>
 #include "crash.h"
 #include <unistd.h> // fork
@@ -10,6 +12,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+#include "strlib.h"
 #include "debug.h"
 
 // pipe1: parent[1] -> child[0]
@@ -17,16 +20,18 @@ static int ghci_pipe1[2];
 // pipe2: parent[0] <- child[1]
 static int ghci_pipe2[2];
 
+FILE* ghci_out;
+
 static void readall( FILE* in )
 {
-    char c;
+    int c;
     while( (c = fgetc(in)) != '>' )
     {
-        putchar( c );
+        //putchar( c );
     }
-    putchar( c );
+    //putchar( c );
     c = fgetc( in );
-    printf( "%c\n", c );
+    //printf( "%c\n", c );
 }
 
 void init_ghci( void )
@@ -61,51 +66,73 @@ void init_ghci( void )
         close( ghci_pipe1[0] );
         close( ghci_pipe2[1] );
 
-        sleep( 1 );
-        FILE* in = fdopen( ghci_pipe2[0], "r" );
+        ghci_out = fdopen( ghci_pipe2[0], "r" );
 
-        readall(in);
-        write_ghci( "let x = 5\n" );
-        readall(in);
-        write_ghci( "x\n" );
-        readall(in);
-        write_ghci( "x\n" );
-        readall(in);
-        write_ghci( "y\n" );
-        readall(in);
-
-        exit(1);
-
-        printf( read_ghci() );
-        printf( "\n" );
-        sleep( 1 );
-        printf( read_ghci() );
-        printf( "\n" );
-        sleep( 1 );
-        write_ghci( "x\n" );
-        printf( read_ghci() );
-        printf( "\n" );
-        sleep( 1 );
-        printf( read_ghci() );
-        printf( "\n" );
-
-        exit(0);
+        readall( ghci_out );
         return;
     }
 }
 
-void write_ghci( const char * str )
+static void read_nonblock( void )
 {
-    //FILE* ghci_in = fdopen( ghci_pipe1[1], "w" );
-    write( ghci_pipe1[1], str, strlen(str) );
-    //fclose( ghci_in );
+    fcntl( ghci_pipe2[0], F_SETFL, O_NONBLOCK );
+}
+static void read_block( void )
+{
+    int oldfl = fcntl( ghci_pipe2[0], F_GETFL );
+    fcntl( ghci_pipe2[0], F_SETFL, oldfl & ~O_NONBLOCK );
 }
 
-const char * read_ghci( void )
+char * ghci_exec( const char * expr )
 {
-    //FILE* ghci_out = fdopen( ghci_pipe2[0], "r" );
-    char * str = malloc( sizeof(char) * 1000 );
-    read( ghci_pipe2[0], str, 1000 );
-    //fclose( ghci_out );
-    return str;
+    write( ghci_pipe1[1], expr, strlen(expr) );
+
+    char * res = malloc( sizeof(char) );
+    res[0] = '\0';
+
+    int c;
+    int nls = 0;
+    bool finished = false;
+    do
+    {
+        read_block();
+        while( (c = fgetc(ghci_out)) != '>' )
+        {
+            if( c == '\n' )
+                nls++;
+            appendChar( &res, (char)c );
+        }
+        appendChar( &res, (char) c );
+        c = fgetc( ghci_out );
+        if( c == '\n' )
+            nls++;
+        appendChar( &res, (char)c );
+        read_nonblock();
+        finished = true;
+        for( int i = 0; i < 3; i++ )
+        {
+            usleep( 100 );
+            c = fgetc( ghci_out );
+            if( c != -1 )
+            {
+                if( c == '\n' )
+                    nls++;
+                appendChar( &res, (char)c );
+                finished = false;
+                break;
+            }
+        }
+    }
+    while( !finished );
+
+    if( nls == 0 )
+    {
+        free( res );
+        return NULL;
+    }
+
+    char * nl = strrchr( res, '\n' );
+    res[nl-res] = '\0';
+
+    return res;
 }

@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include "safety.h"
+#include <string.h>
 
 static const char fpath[80] = "debug_output.txt";
 static FILE* f;

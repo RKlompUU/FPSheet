@@ -36,23 +36,23 @@ char * concatStrs( const char * str1,
     return p;
 }
 
-char * appendChar( char * str,
-                   const char c )
+void appendChar( char ** str,
+                 const char c )
 {
     long unsigned int newSize;
-    if ( str )
+    if ( *str )
     {
-        newSize = sizeof(char) * (strlen( str ) + 2); // + 1 for '\0' and + 1 for c
+        newSize = strlen( *str ) + 2; // + 1 for '\0' and + 1 for c
     }
     else
     {
-        newSize = sizeof(char) * 2;
+        newSize = 2;
     }
-    char * p = realloc( str, newSize );
+    char * p = realloc( *str, sizeof(char) * newSize );
     p[newSize - 2] = c;
     p[newSize - 1] = '\0';
 
-    return p;
+    *str = p;
 }
 
 char * uiStr( uint i )
