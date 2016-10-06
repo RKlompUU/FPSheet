@@ -80,6 +80,7 @@ void init_ghci( void )
 
         ghci_out = fdopen( ghci_outpipe[0], "r" );
 
+        printf( "Starting ghci backend...\n" );
         readall( ghci_out );
         return;
     }

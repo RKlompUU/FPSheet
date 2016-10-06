@@ -183,6 +183,17 @@ void update_cell( struct cell * pcell )
                 break;
         }
     }
+    if( letDef[0] == ':' )
+    {
+        appendChar( &letDef, '\n' );
+        dump_txt( letDef );
+        pcell->res = ghci_exec( letDef );
+        if( pcell->res )
+            dump_txt( pcell->res );
+        ghci_check_err();
+        free( letDef );
+        return;
+    }
 
     char * letName = curPos2Str( pcell->p->row, pcell->p->col );
     revPosStr( letName, strlen(letName) );
