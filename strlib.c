@@ -149,8 +149,74 @@ char * curPos2Str( uint r,
     return s;
 }
 
+void revPosStr( char * str, size_t strLen )
+{
+    long unsigned int i;
+    for( i = 0;; i++ )
+    {
+        if( str[i] < '0' || str[i] > '9' )
+            break;
+    }
+    char * swp = malloc( sizeof(char) * i );
+    memcpy( swp, str, sizeof(char) * i );
+
+    size_t j = sizeof(char) * (strLen-i);
+    memmove( str, &str[i], j );
+    memcpy( &str[j], swp, sizeof(char) * i );
+
+    free( swp );
+}
+
 size_t sizeofUIntStr( uint x )
 {
     if ( x == 0 ) return 2;
     return (size_t) ((ceil( log10( x ) ) + 1) * sizeof(char)) + 1;
+}
+
+bool iswordPosRef( char * str )
+{
+    bool hasNum = false;
+    bool hasChar = false;
+    for( uint i = 0; i < strlen(str); i++ )
+    {
+        char c = str[i];
+        if( !hasNum )
+        {
+            if( c >= '0' && c <= '9' )
+                hasNum = true;
+            else
+                return false;
+        }
+        else if( !hasChar )
+        {
+            if( c >= '0' && c <= '9' )
+                continue;
+            if( c >= 'A' && c <= 'Z' )
+                hasChar = true;
+            else
+                return false;
+        }
+        else
+        {
+            if( c >= 'A' && c <= 'Z' )
+                continue;
+            else if( c == ' ' )
+                return true;
+            return false;
+        }
+    }
+    return hasNum && hasChar;
+}
+
+uint wordLength( const char * str )
+{
+    uint wl = 0;
+    for( uint i = 0; i < strlen(str); i++ )
+    {
+        const char c = str[i];
+        if( c == ' ' )
+            return wl;
+        wl++;
+    }
+    return wl;
 }

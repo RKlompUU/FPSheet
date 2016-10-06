@@ -122,7 +122,7 @@ void render( void )
                    ALIGN_RIGHT,
                    ALIGN_RIGHT );
 
-    cleanArea( x1+1, y1+1, x2+1, y2+1 );
+    cleanArea( x1+1, y1+1, x2-1, y2-1 );
 
     struct cell * cCurFocus = NULL;
     for ( unsigned int row = (uint)s.rowOff; row <= (uint)s.lastR; row++ )
@@ -189,7 +189,10 @@ void drawCell( const struct cell * const c, bool inBorders )
         n = s.wW-y-1;
     }
 
-    mvaddnstr( (int)x, (int)y+1, c->txt, (int)n );
+    if( c->res )
+        mvaddnstr( (int)x, (int)y+1, c->res, (int)n );
+    else
+        mvaddnstr( (int)x, (int)y+1, c->txt, (int)n );
 }
 
 void cleanArea( uint x1,

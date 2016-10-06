@@ -7,6 +7,10 @@
 #include <curses.h>
 
 #include "curses_ctrl.h"
+#include "ghci.h"
+#include <ctype.h>
+
+#include "debug.h"
 
 struct sheet s;
 
@@ -127,6 +131,13 @@ void modeChange( int k )
 
             s.mode = MODE_EDIT;
             s.draw = true;
+
+            struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
+            if ( c && c->res )
+            {
+                free( c->res );
+                c->res = NULL;
+            }
                 break;
         }
             break;
@@ -140,10 +151,72 @@ void modeChange( int k )
 
             s.mode = MODE_NAVIG;
             s.draw = true;
+            struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
+            if ( c )
+            {
+                update_cell( c );
+            }
                 break;
         }
             break;
     }
+}
+
+void update_cell( struct cell * pcell )
+{
+    char * letDef = copyStr( pcell->txt );
+    for( uint i = 0; i < strlen(letDef); i++ )
+    {
+        char c = letDef[i];
+        if( c >= '0' && c <= '9' )
+        {
+            if( iswordPosRef(&letDef[i]) )
+            {
+                revPosStr( &letDef[i], wordLength(&letDef[i]) );
+                letDef[i] = (char) tolower( letDef[i] );
+            }
+        }
+
+        for( ; i < strlen(letDef); i++ )
+        {
+            if( letDef[i] == ' ' )
+                break;
+        }
+    }
+
+    char * letName = curPos2Str( pcell->p->row, pcell->p->col );
+    revPosStr( letName, strlen(letName) );
+    letName[0] = (char)tolower( letName[0] );
+
+    //"let " letName " = " letDef "\n"
+    //4               3            2
+    size_t length = 4 + strlen(letName) + 3 + strlen(letDef) + 2;
+    char * letCommand = malloc( sizeof(char) * length );
+    sprintf( letCommand, "let %s = %s\n", letName, letDef );
+
+    free( letDef );
+    appendChar( &letName, '\n' );
+
+
+    ghci_exec( letCommand );
+    if( !ghci_check_err() )
+    {
+        pcell->res = ghci_exec( letName );
+        if( !pcell->res )
+            ghci_check_err(); // Consume the error
+    }
+    dump_txt( letCommand );
+    if( pcell->res )
+    {
+        dump_txt( pcell->res );
+        dump_txt( "\n" );
+    }
+    else
+    {
+        dump_txt( "no result\n" );
+    }
+    free( letName );
+    free( letCommand );
 }
 
 void initSheet( void )
@@ -212,6 +285,7 @@ struct cell * newC( struct pos * p )
     c->txt = NULL;
     c->uFlag = false;
     c->p = p;
+    c->res = NULL;
 
     mapAdd( s.cells, p, c );
 

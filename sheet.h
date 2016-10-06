@@ -57,6 +57,7 @@ struct pos
 struct cell
 {
     char * txt;
+    char * res;
 
     struct pos * p;
 
@@ -75,6 +76,8 @@ struct cell * getCellP( struct list * l,
                         uint i );
 
 struct cell * newC( struct pos * p );
+
+void update_cell( struct cell * c );
 
 void initSheet( void );
 void exitSheet( void );
