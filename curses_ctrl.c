@@ -122,7 +122,7 @@ void render( void )
                    ALIGN_RIGHT,
                    ALIGN_RIGHT );
 
-    cleanArea( x1+1, y1+1, x2-1, y2-1 );
+    cleanArea( x1, y1+1, x2-1, y2-1 );
 
     struct cell * cCurFocus = NULL;
     for ( unsigned int row = (uint)s.rowOff; row <= (uint)s.lastR; row++ )
@@ -220,8 +220,8 @@ void cellWindowPos_( uint r,
 {
     if ( x )
     {
-        uint bcH = s.cH + 1;
-        *x = hH + (r - (uint) s.rowOff) * bcH;
+        uint bcH = s.cH + s.bH;
+        *x = hH + (r - (uint) s.rowOff) * bcH + 1;
 
         switch ( alignVert )
         {
@@ -239,7 +239,7 @@ void cellWindowPos_( uint r,
 
     if ( y )
     {
-        uint bcW = s.cW + 1;
+        uint bcW = s.cW + s.bW;
         *y = hW + (c - (uint) s.colOff) * bcW;
 
         switch ( alignHor )
@@ -274,8 +274,8 @@ void drawHeaders( void )
     // Row numbers
     //
 
-    uint bcH = s.cH + 1; // Bordered cell height
-    uint lastR = (uint) s.rowOff + (s.wH - s.hH - bcH - 1) / bcH; // - bcH, - 1 to prevent a possible half-row
+    uint bcH = s.cH + s.bH; // Bordered cell height
+    uint lastR = (uint) s.rowOff + (s.wH - s.hH - bcH - (s.bH == 0 ? 1 : 1)) / bcH; // - bcH, - 1 to prevent a possible half-row
     // This conversion from luint to uint is save:
     //    The length of row numbers will never even come close to the limits of uint
     //    , since long before that point other limits would've been reached already
@@ -306,7 +306,7 @@ void drawHeaders( void )
     // Column letters
     //
 
-    uint bcW = s.cW + 1;
+    uint bcW = s.cW + s.bW;
     uint lastC = (uint) s.colOff + (s.wW - s.hW - bcW - 1) / bcW;
 
     if ( s.curCol > (int) lastC ) // Both safe convertions

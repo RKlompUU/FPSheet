@@ -219,6 +219,11 @@ void update_cell( struct cell * pcell )
     free( letCommand );
 }
 
+void saveSheet( int k )
+{
+
+}
+
 void initSheet( void )
 {
     s.cells = allocMap( posCmp );
@@ -236,6 +241,8 @@ void initSheet( void )
 
     s.cW = 10;
     s.cH = 1;
+    s.bW = 1;
+    s.bH = 0;
 
     s.fH = 1;
     s.fW = s.wW;

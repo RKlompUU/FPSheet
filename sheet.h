@@ -31,6 +31,8 @@ struct sheet
 
     uint cW;
     uint cH;
+    uint bW;
+    uint bH;
 
     uint fH;
     uint fW;
