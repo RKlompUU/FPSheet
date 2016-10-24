@@ -54,4 +54,9 @@ void mapAdd( struct map * m,
 void * mapFind( struct map * m,
                 void * k );
 
+void * getKey( struct map * m,
+               uint i );
+void * getVal( struct map * m,
+               uint i );
+
 #endif

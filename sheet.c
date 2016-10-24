@@ -154,7 +154,7 @@ void modeChange( int k )
             struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
             if ( c )
             {
-                update_cell( c );
+                updateCell( c );
             }
                 break;
         }
@@ -162,7 +162,7 @@ void modeChange( int k )
     }
 }
 
-void update_cell( struct cell * pcell )
+void updateCell( struct cell * pcell )
 {
     char * letDef = copyStr( pcell->txt );
     for( uint i = 0; i < strlen(letDef); i++ )
@@ -230,14 +230,41 @@ void update_cell( struct cell * pcell )
     free( letCommand );
 }
 
-void saveSheet( int k )
+void saveSheet( void )
 {
+    if( !s.fileName )
+    {
+        dump_txt( "save to file request, but filename is NULL\n" );
+        return; // TODO: provide feedback to user
+    }
 
+    FILE * f = fopen( s.fileName, "w" );
+
+    /*
+     * File format:
+     *
+     * curRow curCol
+     * cells
+     *
+     * cell: row col txt
+     */
+
+    printf( "%p n\n", f );
+    fprintf( f, "%d %d\n", s.curRow, s.curCol );
+    for( uint i = 0; i < *s.cells->pSize; i++ )
+    {
+        struct cell * c = getVal( s.cells, i );
+        printf( "%d %p\n", i, c );
+        fprintf( f, "%d %d %s\n", c->p->row, c->p->col, c->txt );
+    }
+
+    fclose( f );
 }
 
 void initSheet( void )
 {
     s.cells = allocMap( posCmp );
+    s.fileName = "test";
 
     s.rowOff = 0;
     s.colOff = 0;
@@ -294,6 +321,7 @@ void initSheet( void )
 
 void exitSheet( void )
 {
+    saveSheet();
     freeMap( s.cells );
 }
 

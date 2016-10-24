@@ -114,6 +114,24 @@ void freeMap( struct map * m )
     free( m );
 }
 
+void * getVal( struct map * m,
+               unsigned int i )
+{
+    if( i >= *m->pSize )
+        return NULL;
+
+    return get( m->vals, i );
+}
+
+void * getKey( struct map * m,
+               unsigned int i )
+{
+    if( i >= *m->pSize )
+        return NULL;
+
+    return get( m->keys, i );
+}
+
 void mapAdd( struct map * m,
              void * k,
              void * v )

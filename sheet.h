@@ -15,6 +15,7 @@ enum mode
 struct sheet
 {
     struct map * cells;
+    char * fileName;
 
     enum mode mode;
 
@@ -79,9 +80,11 @@ struct cell * getCellP( struct list * l,
 
 struct cell * newC( struct pos * p );
 
-void update_cell( struct cell * c );
+void updateCell( struct cell * c );
 
 void initSheet( void );
 void exitSheet( void );
+
+void saveSheet( void );
 
 #endif

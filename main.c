@@ -10,15 +10,15 @@
 
 void exitSignal( int k )
 {
-    exitCurses( true );
+    exitCurses( false );
 }
 
 void atExitProg( void )
 {
     if ( isCursesEnabled() )
     {
-        exitCurses( true );
-        exitSheet();
+        //exitSheet();
+        //exitCurses( true );
     }
 }
 
@@ -40,6 +40,8 @@ int main( int argc,
     cursesCtrlLoop();
     exitCurses( true );
     exitSheet();
+
+    dump_txt( "test" );
 
     exit_debug();
 
