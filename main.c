@@ -8,6 +8,8 @@
 #include "ghci.h"
 #include "debug.h"
 
+#include "sheetParser.h"
+
 void exitSignal( int k )
 {
     exitCurses( false );

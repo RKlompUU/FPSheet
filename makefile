@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS  = -g -DDEBUG -I. -Wextra -Wall -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align
 CFLAGS += -Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings -Wformat=2 -Wcast-qual
 CFLAGS += -Wconversion -Wno-unused-parameter -Wno-float-conversion
-LIBS = -lncurses -lm
+LIBS = -lncurses -lm -lpush
 
 ODIR = .obj
 

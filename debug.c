@@ -19,7 +19,11 @@ void exit_debug( void )
 
 void dump_txt( const char * txt )
 {
-    //printf( "TEST" );
     fwrite( txt, sizeof(char), strlen(txt), f );
     fflush( f );
+}
+
+FILE * dumpFile( void )
+{
+    return f;
 }

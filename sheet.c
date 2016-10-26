@@ -12,6 +12,10 @@
 
 #include "debug.h"
 
+#include <push.h>
+
+#include "sheetParser.h"
+
 struct sheet s;
 
 //
@@ -238,7 +242,7 @@ void saveSheet( void )
         return; // TODO: provide feedback to user
     }
 
-    FILE * f = fopen( s.fileName, "w" );
+    FILE * f = fopen( ".sheet", "w" );
 
     /*
      * File format:
@@ -261,10 +265,29 @@ void saveSheet( void )
     fclose( f );
 }
 
+void openSheet( const char * fileName )
+{
+    /*
+    FILE * f = fopen( fileName, "r" );
+    fseek( f, 0, SEEK_END );
+    luint fsize = (luint) ftell( f );
+    rewind( f );
+    char * str = malloc( (fsize + 1)*sizeof(char) );
+    fread( str, fsize, sizeof(char), f );
+    fclose( f );
+    dump_txt( "***openSheet***\n" );
+    dump_txt( str );
+    dump_txt( "***************\n" );
+    */
+
+    parseSheet( fileName );
+    return;
+}
+
 void initSheet( void )
 {
     s.cells = allocMap( posCmp );
-    s.fileName = "test";
+    s.fileName = "";
 
     s.rowOff = 0;
     s.colOff = 0;
@@ -317,6 +340,8 @@ void initSheet( void )
     subKey( KEY_ENTER, modeChange );
     subKey( '\r', modeChange );
     subKey( 'i', modeChange );
+
+    openSheet( ".sheet" );
 }
 
 void exitSheet( void )

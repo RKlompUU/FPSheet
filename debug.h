@@ -7,7 +7,6 @@ void init_debug( void );
 void exit_debug( void );
 void dump_txt( const char * txt );
 
-FILE* start_dump( void );
-void end_dump( FILE* f );
+FILE * dumpFile( void );
 
 #endif

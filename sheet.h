@@ -86,5 +86,6 @@ void initSheet( void );
 void exitSheet( void );
 
 void saveSheet( void );
+void openSheet( const char * fileName );
 
 #endif
