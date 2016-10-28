@@ -61,7 +61,7 @@ void initCurses( void )
 
     initList( &kListeners );
     initList( &subGroups );
-    for ( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_EDIT; i++ )
+    for ( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_VISUAL; i++ )
     {
         pushBack( &subGroups, allocList() );
     }
@@ -157,16 +157,15 @@ void drawSheet()
     render();
     drawCursor();
 
-    mvaddch( 0, 0, ' ' );
+    //mvaddch( 0, 0, ' ' );
+    char m;
     switch ( s.mode )
     {
-        case MODE_NAVIG:
-        mvaddch( (int)s.wH - 1, 0, 'M' );
-            break;
-        case MODE_EDIT:
-        mvaddch( (int)s.wH - 1, 0, 'E' );
-            break;
+        case MODE_NAVIG:  m = 'M'; break;
+        case MODE_EDIT:   m = 'E'; break;
+        case MODE_VISUAL: m = 'V'; break;
     }
+    mvaddch( (int)s.wH - 1, 0, (uint)m );
 }
 
 void drawCell( const struct cell * const c, bool inBorders )
@@ -193,6 +192,11 @@ void drawCell( const struct cell * const c, bool inBorders )
         mvaddnstr( (int)x, (int)y+1, c->res, (int)n );
     else
         mvaddnstr( (int)x, (int)y+1, c->txt, (int)n );
+
+    if( c->bar )
+    {
+        mvchgat( (int)x, (int)y+1, (int)s.cW, A_UNDERLINE, 0, NULL );
+    }
 }
 
 void cleanArea( uint x1,

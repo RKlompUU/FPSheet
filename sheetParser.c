@@ -16,11 +16,10 @@ luint grab_luint( ast * a )
     return strtoul( a->contents, &pEnd, 10 );
 }
 
-char * grab_str( ast * a )
+char * grab_str( ast * a, int off )
 {
-    return copyStr( a->contents );
+    return copyStr( &a->contents[off] );
 }
-
 
 void process_cell( ast * cAst )
 {
@@ -28,25 +27,30 @@ void process_cell( ast * cAst )
     p->row = (uint)grab_luint( get_child_lb(cAst, "num|regex", 0) );
     p->col = (uint)grab_luint( get_child_lb(cAst, "num|regex", 1) );
     struct cell * c = newC( p );
-    c->txt = grab_str( get_child(cAst, "str|regex") );
+    c->txt = grab_str( get_child(cAst, "str|regex"), 1 );
+    c->bar = get_child(cAst, "bool|char")->contents[0] == '1';
 }
 
 void parseSheet( const char * fileName )
 {
     mpc_parser_t * sheet = mpc_new( "sheet" );
+    mpc_parser_t * boolean = mpc_new( "bool" );
     mpc_parser_t * meta  = mpc_new( "meta" );
     mpc_parser_t * cell  = mpc_new( "cell" );
+    mpc_parser_t * cells = mpc_new( "cells" );
     mpc_parser_t * num   = mpc_new( "num" );
     mpc_parser_t * str   = mpc_new( "str" );
 
     // big example: https://github.com/howerj/dbcc/blob/master/parse.c
     mpca_lang( MPCA_LANG_DEFAULT,
+               " bool  : '0' | '1'; "
                " num   : /[0-9]+/; "
                " meta  : <num> <num>; "
-               " str   : /[^\n]*/; "
-               " cell  : <num> <num> <str>; "
-               " sheet : /^/ <meta> <cell>* /$/; ",
-               num, meta, str, cell, sheet, NULL );
+               " str   : /:[^\n]*/; "
+               " cell  : <num> <num> <bool> <str>; "
+               " cells : 'c' <cell>*; "
+               " sheet : /^/ <meta> <cells> /$/; ",
+               boolean, num, meta, str, cell, cells, sheet, NULL );
 
     mpc_result_t r;
 
@@ -64,19 +68,22 @@ void parseSheet( const char * fileName )
         dump_txt( "parse result****\n" );
         ast * rootAst = (ast*)r.output;
         mpc_ast_print_to( rootAst, fDump );
+        dump_txt( "****************\n" );
 
         ast * metaAst = get_child( rootAst, "meta|>" );
         s.curRow = (int)grab_luint( get_child_lb(metaAst, "num|regex", 0) );
         s.curCol = (int)grab_luint( get_child_lb(metaAst, "num|regex", 1) );
 
-        int cells = rootAst->children_num-3; // -3: /^/, meta and /$/
-        for( int i = 0; i < cells; i++ )
+        ast * cellsAst = get_child( rootAst, "cells|>" );
+        if( cellsAst )
         {
-            process_cell( get_child_lb( rootAst, "cell|>", i+2) );
+            for( int i = 1; i < cellsAst->children_num; i++ ) // starting at 1, 'c' is at index 0
+            {
+                process_cell( get_child_lb( cellsAst, "cell|>", i) );
+            }
         }
 
         mpc_ast_delete( r.output );
-        dump_txt( "****************\n" );
     }
     else
     {
@@ -87,5 +94,5 @@ void parseSheet( const char * fileName )
         dump_txt( "***************\n" );
     }
 
-    mpc_cleanup( 4, num, sheet, str, meta, cell );
+    mpc_cleanup( 7, num, sheet, str, meta, cell, cells, boolean );
 }

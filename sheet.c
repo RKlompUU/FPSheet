@@ -22,8 +22,8 @@ struct sheet s;
 // Utility functions
 //
 
-int posCmp( void * p1_,
-            void * p2_ )
+static int posCmp( void * p1_,
+                   void * p2_ )
 {
     struct pos * p1 = (struct pos *) p1_;
     struct pos * p2 = (struct pos *) p2_;
@@ -37,8 +37,8 @@ int posCmp( void * p1_,
     return 0;
 }
 
-void gotoOff( int r,
-              int c )
+static void gotoOff( int r,
+                     int c )
 {
     if ( r < 0 || c < 0 ) return;
 
@@ -59,15 +59,14 @@ void moveCur( int r,
     s.draw = true;
 
     if ( r < s.rowOff ) gotoOff( r, s.colOff );
-    int d = r - (int) s.lastR;
-    if ( d > 0 ) gotoOff( s.rowOff + d, s.colOff );
-
-    if ( c < s.colOff ) gotoOff( s.rowOff, c );
-    d = c - (int) s.lastC;
-    if ( d > 0 ) gotoOff( s.rowOff, s.colOff + d );
+    int rOver = r - (int) s.lastR;
+    int cOver = c - (int) s.lastC;
+    if ( rOver > 0 && cOver > 0 ) gotoOff( s.rowOff + rOver, s.colOff + cOver );
+    else if ( rOver > 0 ) gotoOff( s.rowOff + rOver, s.colOff );
+    else if ( cOver > 0 ) gotoOff( s.rowOff, s.colOff + cOver );
 }
 
-void editCell( int k )
+static void editCell( int k )
 {
     struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
     if ( c == NULL )
@@ -101,7 +100,7 @@ void editCell( int k )
     }
 }
 
-void moveCursorKey( int k )
+static void moveCursorKey( int k )
 {
     switch ( k )
     {
@@ -116,6 +115,43 @@ void moveCursorKey( int k )
             break;
         case KEY_RIGHT:
         moveCur( s.curRow, s.curCol + 1 );
+            break;
+    }
+}
+
+static void toggleBar( uint row, uint col )
+{
+    struct pos * p = malloc( sizeof(struct pos) );
+    p->row = row;
+    p->col = col;
+    struct cell * c = mapFind( s.cells, p );
+    if( c )
+    {
+        c->bar = !c->bar;
+    }
+    else
+    {
+        c = newC( p );
+        c->bar = true;
+        c->txt = malloc( sizeof(char)*1 );
+        c->txt[0] = '\0';
+    }
+}
+
+static void visualCallback( int k )
+{
+    switch( k )
+    {
+        case KEY_UP:
+        case KEY_DOWN:
+        case KEY_LEFT:
+        case KEY_RIGHT:
+        moveCursorKey( k );
+            break;
+        case 'u':
+        {
+            toggleBar( s.curRow, s.curCol );
+        }
             break;
     }
 }
@@ -143,6 +179,13 @@ void modeChange( int k )
                 c->res = NULL;
             }
                 break;
+            case 'v':
+            unsubGroup( GROUP_SUB_NAVIG, moveCursorKey );
+            subGroup( GROUP_SUB_VISUAL, visualCallback );
+
+            s.mode = MODE_VISUAL;
+            s.draw = true;
+                break;
         }
             break;
         case MODE_EDIT:
@@ -161,6 +204,17 @@ void modeChange( int k )
                 updateCell( c );
             }
                 break;
+        }
+            break;
+        case MODE_VISUAL:
+        switch( k )
+        {
+            case KEY_ESC:
+            unsubGroup( GROUP_SUB_VISUAL, visualCallback );
+            subGroup( GROUP_SUB_NAVIG, moveCursorKey );
+
+            s.mode = MODE_NAVIG;
+            s.draw = true;
         }
             break;
     }
@@ -248,18 +302,18 @@ void saveSheet( void )
      * File format:
      *
      * curRow curCol
+     * 'c'
      * cells
      *
-     * cell: row col txt
+     * cell: row col bar :txt
+     * bar: 0 | 1
      */
 
-    printf( "%p n\n", f );
-    fprintf( f, "%d %d\n", s.curRow, s.curCol );
+    fprintf( f, "%d %d\nc\n", s.curRow, s.curCol );
     for( uint i = 0; i < *s.cells->pSize; i++ )
     {
         struct cell * c = getVal( s.cells, i );
-        printf( "%d %p\n", i, c );
-        fprintf( f, "%d %d %s\n", c->p->row, c->p->col, c->txt );
+        fprintf( f, "%d %d %d :%s\n", c->p->row, c->p->col, (c->bar ? 1 : 0), c->txt );
     }
 
     fclose( f );
@@ -340,6 +394,15 @@ void initSheet( void )
     subKey( KEY_ENTER, modeChange );
     subKey( '\r', modeChange );
     subKey( 'i', modeChange );
+    subKey( 'v', modeChange );
+
+    addSubToGroup( KEY_UP, GROUP_SUB_VISUAL );
+    addSubToGroup( KEY_DOWN, GROUP_SUB_VISUAL );
+    addSubToGroup( KEY_LEFT, GROUP_SUB_VISUAL );
+    addSubToGroup( KEY_RIGHT, GROUP_SUB_VISUAL );
+    addSubToGroup( KEY_ENTER, GROUP_SUB_VISUAL );
+    addSubToGroup( '\r', GROUP_SUB_VISUAL );
+    addSubToGroup( 'u', GROUP_SUB_VISUAL );
 
     openSheet( ".sheet" );
 }
@@ -357,6 +420,7 @@ struct cell * newC( struct pos * p )
     c->uFlag = false;
     c->p = p;
     c->res = NULL;
+    c->bar = false;
 
     mapAdd( s.cells, p, c );
 
