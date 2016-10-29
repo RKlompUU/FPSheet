@@ -58,12 +58,13 @@ void moveCur( int r,
 
     s.draw = true;
 
-    if ( r < s.rowOff ) gotoOff( r, s.colOff );
+    if( r < s.rowOff ) gotoOff( r, s.colOff );
+    if( c < s.colOff ) gotoOff( s.rowOff, c );
     int rOver = r - (int) s.lastR;
     int cOver = c - (int) s.lastC;
-    if ( rOver > 0 && cOver > 0 ) gotoOff( s.rowOff + rOver, s.colOff + cOver );
-    else if ( rOver > 0 ) gotoOff( s.rowOff + rOver, s.colOff );
-    else if ( cOver > 0 ) gotoOff( s.rowOff, s.colOff + cOver );
+    if( rOver > 0 && cOver > 0 ) gotoOff( s.rowOff + rOver, s.colOff + cOver );
+    else if( rOver > 0 ) gotoOff( s.rowOff + rOver, s.colOff );
+    else if( cOver > 0 ) gotoOff( s.rowOff, s.colOff + cOver );
 }
 
 static void editCell( int k )
@@ -151,6 +152,7 @@ static void visualCallback( int k )
         case 'u':
         {
             toggleBar( s.curRow, s.curCol );
+            s.draw = true;
         }
             break;
     }
@@ -301,7 +303,7 @@ void saveSheet( void )
     /*
      * File format:
      *
-     * curRow curCol
+     * curRow curCol rowOff colOff
      * 'c'
      * cells
      *
@@ -309,7 +311,7 @@ void saveSheet( void )
      * bar: 0 | 1
      */
 
-    fprintf( f, "%d %d\nc\n", s.curRow, s.curCol );
+    fprintf( f, "%d %d %d %d\nc\n", s.curRow, s.curCol, s.rowOff, s.colOff );
     for( uint i = 0; i < *s.cells->pSize; i++ )
     {
         struct cell * c = getVal( s.cells, i );
@@ -335,6 +337,9 @@ void openSheet( const char * fileName )
     */
 
     parseSheet( fileName );
+    drawHeaders(); // To set lastR and lastC
+    moveCur( s.curRow, s.curCol );
+
     return;
 }
 
@@ -391,6 +396,7 @@ void initSheet( void )
 
     subGroup( GROUP_SUB_NAVIG, moveCursorKey );
 
+    subKey( KEY_ESC, modeChange );
     subKey( KEY_ENTER, modeChange );
     subKey( '\r', modeChange );
     subKey( 'i', modeChange );
@@ -403,6 +409,7 @@ void initSheet( void )
     addSubToGroup( KEY_ENTER, GROUP_SUB_VISUAL );
     addSubToGroup( '\r', GROUP_SUB_VISUAL );
     addSubToGroup( 'u', GROUP_SUB_VISUAL );
+    addSubToGroup( KEY_ESC, GROUP_SUB_VISUAL );
 
     openSheet( ".sheet" );
 }

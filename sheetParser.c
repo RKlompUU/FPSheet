@@ -45,7 +45,7 @@ void parseSheet( const char * fileName )
     mpca_lang( MPCA_LANG_DEFAULT,
                " bool  : '0' | '1'; "
                " num   : /[0-9]+/; "
-               " meta  : <num> <num>; "
+               " meta  : <num> <num> <num> <num>; "
                " str   : /:[^\n]*/; "
                " cell  : <num> <num> <bool> <str>; "
                " cells : 'c' <cell>*; "
@@ -73,6 +73,8 @@ void parseSheet( const char * fileName )
         ast * metaAst = get_child( rootAst, "meta|>" );
         s.curRow = (int)grab_luint( get_child_lb(metaAst, "num|regex", 0) );
         s.curCol = (int)grab_luint( get_child_lb(metaAst, "num|regex", 1) );
+        s.rowOff = (int)grab_luint( get_child_lb(metaAst, "num|regex", 2) );
+        s.colOff = (int)grab_luint( get_child_lb(metaAst, "num|regex", 3) );
 
         ast * cellsAst = get_child( rootAst, "cells|>" );
         if( cellsAst )

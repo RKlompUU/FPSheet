@@ -5,7 +5,8 @@
 
 #include <ncurses.h>
 
-#define KEY_ESC -1
+#define KEY_ESC (-10)
+#define KEY_ALT (-11)
 
 void initCurses( void );
 void exitCurses( bool cleanupMem );
