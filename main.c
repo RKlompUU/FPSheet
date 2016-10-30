@@ -37,9 +37,6 @@ int main( int argc,
     dump_txt( "initializing spreadsheet\n" );
     initSheet();
 
-    // TODO: change this to escape: http://stackoverflow.com/questions/5977395/ncurses-and-esc-alt-keys
-    subKey( KEY_END, exitSignal );
-
     dump_txt( "everything initialized, entering control loop\n" );
     cursesCtrlLoop();
     exitCurses( true );

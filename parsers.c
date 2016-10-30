@@ -7,6 +7,7 @@
 #include "strlib.h"
 
 #include "sheet.h"
+#include "curses_ctrl.h"
 
 typedef mpc_ast_t ast;
 #define get_child mpc_ast_get_child
@@ -56,18 +57,24 @@ static void processGoto( ast * gotoAst )
 
     moveCursor( r, c );
 }
+static void processQuit( ast * quitAst )
+{
+    exitCurses( false );
+}
 
 void parseCommand( const char * str )
 {
     mpc_parser_t * cellRef  = mpc_new( "cellRef" );
     mpc_parser_t * gotoCell = mpc_new( "goto" );
+    mpc_parser_t * quit     = mpc_new( "quit" );
     mpc_parser_t * command  = mpc_new( "command" );
 
-    mpca_lang( MPCA_LANG_DEFAULT,
+    mpca_lang( MPCA_LANG_WHITESPACE_SENSITIVE,
                " cellRef : /[0-9]+/ /[A-Z]+/; "
                " goto    : ':' <cellRef>; "
-               " command : /^/ <goto>; ",
-               cellRef, gotoCell, command, NULL );
+               " quit    : ':' 'q'; "
+               " command : /^/ (<goto> | <quit>) /$/; ",
+               cellRef, gotoCell, quit, command, NULL );
 
     mpc_result_t r;
     if( mpc_parse("", str, command, &r) )
@@ -81,6 +88,7 @@ void parseCommand( const char * str )
         struct list l;
         initList( &l );
         addCmd2List( &l, &processGoto, "goto|>" );
+        addCmd2List( &l, &processQuit, "quit|>" );
 
         for( uint i = 0; i < l.size; i++ )
         {
@@ -106,7 +114,7 @@ void parseCommand( const char * str )
     }
 
 
-    mpc_cleanup( 3, cellRef, gotoCell, command );
+    mpc_cleanup( 4, cellRef, gotoCell, quit, command );
 }
 
 void parseSheet( const char * fileName )
