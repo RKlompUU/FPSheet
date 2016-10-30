@@ -14,7 +14,7 @@
 
 #include <push.h>
 
-#include "sheetParser.h"
+#include "parsers.h"
 
 struct sheet s;
 
@@ -48,7 +48,7 @@ static void gotoOff( int r,
     s.draw = true;
 }
 
-void moveCur( int r,
+void moveCursor( int r,
               int c )
 {
     if ( r < 0 || c < 0 ) return;
@@ -101,21 +101,42 @@ static void editCell( int k )
     }
 }
 
+static void cmdCallback( int k )
+{
+    switch( k )
+    {
+        case KEY_BACKSPACE:
+        {
+            luint length = strlen( s.cmd );
+            if( length > 1 )
+            {
+                s.cmd[length-1] = '\0';
+                s.draw = true;
+            }
+        }
+            break;
+        default:
+        appendChar( &s.cmd, k );
+        s.draw = true;
+            break;
+    }
+}
+
 static void moveCursorKey( int k )
 {
     switch ( k )
     {
         case KEY_UP:
-        moveCur( s.curRow - 1, s.curCol );
+        moveCursor( s.curRow - 1, s.curCol );
             break;
         case KEY_DOWN:
-        moveCur( s.curRow + 1, s.curCol );
+        moveCursor( s.curRow + 1, s.curCol );
             break;
         case KEY_LEFT:
-        moveCur( s.curRow, s.curCol - 1 );
+        moveCursor( s.curRow, s.curCol - 1 );
             break;
         case KEY_RIGHT:
-        moveCur( s.curRow, s.curCol + 1 );
+        moveCursor( s.curRow, s.curCol + 1 );
             break;
     }
 }
@@ -188,6 +209,13 @@ void modeChange( int k )
             s.mode = MODE_VISUAL;
             s.draw = true;
                 break;
+            case ':':
+            unsubGroup( GROUP_SUB_NAVIG, moveCursorKey );
+            subGroup( GROUP_SUB_CMD, cmdCallback );
+
+            s.mode = MODE_COMMAND;
+            s.draw = true;
+                break;
         }
             break;
         case MODE_EDIT:
@@ -217,6 +245,22 @@ void modeChange( int k )
 
             s.mode = MODE_NAVIG;
             s.draw = true;
+        }
+            break;
+        case MODE_COMMAND:
+        switch( k )
+        {
+            case KEY_ENTER:
+            case '\r':
+            unsubGroup( GROUP_SUB_CMD, cmdCallback );
+            subGroup( GROUP_SUB_NAVIG, moveCursorKey );
+
+            parseCommand( s.cmd );
+
+            s.cmd[0] = '\0';
+            s.mode = MODE_NAVIG;
+            s.draw = true;
+                break;
         }
             break;
     }
@@ -315,7 +359,8 @@ void saveSheet( void )
     for( uint i = 0; i < *s.cells->pSize; i++ )
     {
         struct cell * c = getVal( s.cells, i );
-        fprintf( f, "%d %d %d :%s\n", c->p->row, c->p->col, (c->bar ? 1 : 0), c->txt );
+        if( c->bar || strlen(c->txt) )
+            fprintf( f, "%d %d %d :%s\n", c->p->row, c->p->col, (c->bar ? 1 : 0), c->txt );
     }
 
     fclose( f );
@@ -323,22 +368,9 @@ void saveSheet( void )
 
 void openSheet( const char * fileName )
 {
-    /*
-    FILE * f = fopen( fileName, "r" );
-    fseek( f, 0, SEEK_END );
-    luint fsize = (luint) ftell( f );
-    rewind( f );
-    char * str = malloc( (fsize + 1)*sizeof(char) );
-    fread( str, fsize, sizeof(char), f );
-    fclose( f );
-    dump_txt( "***openSheet***\n" );
-    dump_txt( str );
-    dump_txt( "***************\n" );
-    */
-
     parseSheet( fileName );
     drawHeaders(); // To set lastR and lastC
-    moveCur( s.curRow, s.curCol );
+    moveCursor( s.curRow, s.curCol );
 
     return;
 }
@@ -350,6 +382,9 @@ void initSheet( void )
 
     s.rowOff = 0;
     s.colOff = 0;
+
+    s.cmd = malloc( sizeof(char) );
+    s.cmd[0] = '\0';
 
     int h, w;
     getmaxyx( stdscr, h, w );
@@ -385,14 +420,10 @@ void initSheet( void )
     for ( int c = ' '; c <= '~'; c++ )
     {
         addSubToGroup( c, GROUP_SUB_EDIT );
+        addSubToGroup( c, GROUP_SUB_CMD );
     }
     addSubToGroup( KEY_BACKSPACE, GROUP_SUB_EDIT );
-    addSubToGroup( 127, GROUP_SUB_EDIT );
-    //
-//    for ( int c = 'A'; c <= 'Z'; c++ )
-//    {
-//        addSubToGroup( c, GROUP_SUB_EDIT );
-//    }
+    addSubToGroup( KEY_BACKSPACE, GROUP_SUB_CMD );
 
     subGroup( GROUP_SUB_NAVIG, moveCursorKey );
 
@@ -401,6 +432,7 @@ void initSheet( void )
     subKey( '\r', modeChange );
     subKey( 'i', modeChange );
     subKey( 'v', modeChange );
+    subKey( ':', modeChange );
 
     addSubToGroup( KEY_UP, GROUP_SUB_VISUAL );
     addSubToGroup( KEY_DOWN, GROUP_SUB_VISUAL );

@@ -1,0 +1,178 @@
+#include "parsers.h"
+
+#include <stdio.h>
+
+#include "debug.h"
+#include "mpc.h"
+#include "strlib.h"
+
+#include "sheet.h"
+
+typedef mpc_ast_t ast;
+#define get_child mpc_ast_get_child
+#define get_child_lb mpc_ast_get_child_lb
+
+luint grabLuint( ast * a )
+{
+    char * pEnd;
+    return strtoul( a->contents, &pEnd, 10 );
+}
+
+char * grabStr( ast * a, int off )
+{
+    return copyStr( &a->contents[off] );
+}
+
+void processCell( ast * cAst )
+{
+    struct pos * p = malloc( sizeof(struct pos) );
+    p->row = (uint)grabLuint( get_child_lb(cAst, "num|regex", 0) );
+    p->col = (uint)grabLuint( get_child_lb(cAst, "num|regex", 1) );
+    struct cell * c = newC( p );
+    c->txt = grabStr( get_child(cAst, "str|regex"), 1 );
+    c->bar = get_child(cAst, "bool|char")->contents[0] == '1';
+}
+
+
+struct cmdListEntry
+{
+    const char * lbl;
+    void (*processCmd)(ast *);
+};
+
+static void addCmd2List( struct list * l, void (*processCmd)(ast *), const char * lbl )
+{
+    struct cmdListEntry * c = malloc( sizeof(struct cmdListEntry) );
+    c->lbl = lbl;
+    c->processCmd = processCmd;
+    pushBack( l, c );
+}
+
+static void processGoto( ast * gotoAst )
+{
+    ast * cellRef = get_child( gotoAst, "cellRef|>" );
+    luint r = grabLuint( get_child_lb(cellRef, "regex", 0) );
+    luint c = alpha2Uint( get_child_lb(cellRef, "regex", 1)->contents );
+
+    moveCursor( r, c );
+}
+
+void parseCommand( const char * str )
+{
+    mpc_parser_t * cellRef  = mpc_new( "cellRef" );
+    mpc_parser_t * gotoCell = mpc_new( "goto" );
+    mpc_parser_t * command  = mpc_new( "command" );
+
+    mpca_lang( MPCA_LANG_DEFAULT,
+               " cellRef : /[0-9]+/ /[A-Z]+/; "
+               " goto    : ':' <cellRef>; "
+               " command : /^/ <goto>; ",
+               cellRef, gotoCell, command, NULL );
+
+    mpc_result_t r;
+    if( mpc_parse("", str, command, &r) )
+    {
+        FILE * fDump = dumpFile();
+        dump_txt( "parse result****\n" );
+        ast * rootAst = (ast*)r.output;
+        mpc_ast_print_to( rootAst, fDump );
+        dump_txt( "****************\n" );
+
+        struct list l;
+        initList( &l );
+        addCmd2List( &l, &processGoto, "goto|>" );
+
+        for( uint i = 0; i < l.size; i++ )
+        {
+            struct cmdListEntry * cmdEntry = get( &l, i );
+            ast * a = get_child( rootAst, cmdEntry->lbl );
+            if( a )
+            {
+                (*cmdEntry->processCmd)( a );
+                break;
+            }
+        }
+
+        freeListExcl( &l );
+        mpc_ast_delete( r.output );
+    }
+    else
+    {
+        FILE * fDump = dumpFile();
+        dump_txt( "parse error****\n" );
+        mpc_err_print_to( r.error, fDump );
+        mpc_err_delete( r.error );
+        dump_txt( "***************\n" );
+    }
+
+
+    mpc_cleanup( 3, cellRef, gotoCell, command );
+}
+
+void parseSheet( const char * fileName )
+{
+    mpc_parser_t * sheet = mpc_new( "sheet" );
+    mpc_parser_t * boolean = mpc_new( "bool" );
+    mpc_parser_t * meta  = mpc_new( "meta" );
+    mpc_parser_t * cell  = mpc_new( "cell" );
+    mpc_parser_t * cells = mpc_new( "cells" );
+    mpc_parser_t * num   = mpc_new( "num" );
+    mpc_parser_t * str   = mpc_new( "str" );
+
+    // big example: https://github.com/howerj/dbcc/blob/master/parse.c
+    mpca_lang( MPCA_LANG_DEFAULT,
+               " bool  : '0' | '1'; "
+               " num   : /[0-9]+/; "
+               " meta  : <num> <num> <num> <num>; "
+               " str   : /:[^\n]*/; "
+               " cell  : <num> <num> <bool> <str>; "
+               " cells : 'c' <cell>*; "
+               " sheet : /^/ <meta> <cells> /$/; ",
+               boolean, num, meta, str, cell, cells, sheet, NULL );
+
+    mpc_result_t r;
+
+    FILE * f = fopen( fileName, "r" );
+    if( !f )
+    {
+        dump_txt( "Save <" );
+        dump_txt( fileName );
+        dump_txt( "> doesn't exist, cold boot\n" );
+        return;
+    }
+    if( mpc_parse_file( fileName, f, sheet, &r ) )
+    {
+        FILE * fDump = dumpFile();
+        dump_txt( "parse result****\n" );
+        ast * rootAst = (ast*)r.output;
+        mpc_ast_print_to( rootAst, fDump );
+        dump_txt( "****************\n" );
+
+        ast * metaAst = get_child( rootAst, "meta|>" );
+        s.curRow = (int)grabLuint( get_child_lb(metaAst, "num|regex", 0) );
+        s.curCol = (int)grabLuint( get_child_lb(metaAst, "num|regex", 1) );
+        s.rowOff = (int)grabLuint( get_child_lb(metaAst, "num|regex", 2) );
+        s.colOff = (int)grabLuint( get_child_lb(metaAst, "num|regex", 3) );
+
+        ast * cellsAst = get_child( rootAst, "cells|>" );
+        if( cellsAst )
+        {
+            for( int i = 1; i < cellsAst->children_num; i++ ) // starting at 1, 'c' is at index 0
+            {
+                processCell( get_child_lb( cellsAst, "cell|>", i) );
+            }
+        }
+
+        mpc_ast_delete( r.output );
+    }
+    else
+    {
+        FILE * fDump = dumpFile();
+        dump_txt( "parse error****\n" );
+        mpc_err_print_to( r.error, fDump );
+        mpc_err_delete( r.error );
+        dump_txt( "***************\n" );
+    }
+
+    mpc_cleanup( 7, num, sheet, str, meta, cell, cells, boolean );
+}

@@ -8,7 +8,6 @@
 #include "ghci.h"
 #include "debug.h"
 
-#include "sheetParser.h"
 
 void exitSignal( int k )
 {
@@ -19,8 +18,8 @@ void atExitProg( void )
 {
     if ( isCursesEnabled() )
     {
-        //exitSheet();
-        //exitCurses( true );
+        exitSheet();
+        exitCurses( true );
     }
 }
 
@@ -46,7 +45,7 @@ int main( int argc,
     exitCurses( true );
     exitSheet();
 
-    dump_txt( "test" );
+    dump_txt( "shutdown\n" );
 
     exit_debug();
 

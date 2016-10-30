@@ -61,7 +61,7 @@ void initCurses( void )
 
     initList( &kListeners );
     initList( &subGroups );
-    for ( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_VISUAL; i++ )
+    for ( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_CMD; i++ )
     {
         pushBack( &subGroups, allocList() );
     }
@@ -157,15 +157,21 @@ void drawSheet()
     render();
     drawCursor();
 
-    //mvaddch( 0, 0, ' ' );
-    char m;
     switch ( s.mode )
     {
-        case MODE_NAVIG:  m = 'M'; break;
-        case MODE_EDIT:   m = 'E'; break;
-        case MODE_VISUAL: m = 'V'; break;
+        case MODE_NAVIG:
+        mvaddch( (int)s.wH - 1, 0, 'M' );
+            break;
+        case MODE_EDIT:
+        mvaddch( s.wH - 1, 0, 'E' );
+            break;
+        case MODE_VISUAL:
+        mvaddch( s.wH - 1, 0, 'V' );
+            break;
+        case MODE_COMMAND:
+        mvaddstr( s.wH - 1, 0, s.cmd );
+            break;
     }
-    mvaddch( (int)s.wH - 1, 0, (uint)m );
 }
 
 void drawCell( const struct cell * const c, bool inBorders )

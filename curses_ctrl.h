@@ -45,7 +45,8 @@ enum groupid
 {
     GROUP_SUB_NAVIG,
     GROUP_SUB_EDIT,
-    GROUP_SUB_VISUAL
+    GROUP_SUB_VISUAL,
+    GROUP_SUB_CMD
 };
 void addSubToGroup( int k,
                     enum groupid g );

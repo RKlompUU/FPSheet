@@ -21,6 +21,7 @@ luint iLength( int i );
 luint uiLength( uint i );
 
 char * uint2Alpha( uint i );
+uint alpha2Uint( const char * str );
 
 char * list2Str( struct list * l );
 
