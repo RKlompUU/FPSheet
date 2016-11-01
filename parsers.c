@@ -49,13 +49,24 @@ static void addCmd2List( struct list * l, void (*processCmd)(ast *), const char 
     pushBack( l, c );
 }
 
-static void processGoto( ast * gotoAst )
+static void processGotoCell( ast * gotoAst )
 {
-    ast * cellRef = get_child( gotoAst, "cellRef|>" );
-    luint r = grabLuint( get_child_lb(cellRef, "regex", 0) );
-    luint c = alpha2Uint( get_child_lb(cellRef, "regex", 1)->contents );
+    luint r = grabLuint( get_child(gotoAst, "row|regex") );
+    luint c = alpha2Uint( get_child(gotoAst, "col|regex")->contents );
 
     moveCursor( r, c );
+}
+static void processGotoRow( ast * gotoAst )
+{
+    luint r = grabLuint( get_child(gotoAst, "row|regex") );
+
+    moveCursor( r, s.curCol );
+}
+static void processGotoCol( ast * gotoAst )
+{
+    luint c = alpha2Uint( get_child(gotoAst, "col|regex")->contents );
+
+    moveCursor( s.curRow, c );
 }
 static void processQuit( ast * quitAst )
 {
@@ -64,17 +75,23 @@ static void processQuit( ast * quitAst )
 
 void parseCommand( const char * str )
 {
-    mpc_parser_t * cellRef  = mpc_new( "cellRef" );
-    mpc_parser_t * gotoCell = mpc_new( "goto" );
+    mpc_parser_t * row      = mpc_new( "row" );
+    mpc_parser_t * col      = mpc_new( "col" );
+    mpc_parser_t * gotoCell = mpc_new( "gotoCell" );
+    mpc_parser_t * gotoRow  = mpc_new( "gotoRow" );
+    mpc_parser_t * gotoCol  = mpc_new( "gotoCol" );
     mpc_parser_t * quit     = mpc_new( "quit" );
     mpc_parser_t * command  = mpc_new( "command" );
 
     mpca_lang( MPCA_LANG_WHITESPACE_SENSITIVE,
-               " cellRef : /[0-9]+/ /[A-Z]+/; "
-               " goto    : ':' <cellRef>; "
-               " quit    : ':' 'q'; "
-               " command : /^/ (<goto> | <quit>) /$/; ",
-               cellRef, gotoCell, quit, command, NULL );
+               " row      : /[0-9]+/; "
+               " col      : /[A-Z]+/; "
+               " gotoCell : ':' <row> <col>; "
+               " gotoCol  : ':' <col>; "
+               " gotoRow  : ':' <row>; "
+               " quit     : ':' 'q'; "
+               " command  : /^/ (<gotoCell> | <gotoRow> | <gotoCol> | <quit>) /$/; ",
+               row, col, gotoCell, gotoRow, gotoCol, quit, command, NULL );
 
     mpc_result_t r;
     if( mpc_parse("", str, command, &r) )
@@ -87,7 +104,9 @@ void parseCommand( const char * str )
 
         struct list l;
         initList( &l );
-        addCmd2List( &l, &processGoto, "goto|>" );
+        addCmd2List( &l, &processGotoCell, "gotoCell|>" );
+        addCmd2List( &l, &processGotoRow, "gotoRow|>" );
+        addCmd2List( &l, &processGotoCol, "gotoCol|>" );
         addCmd2List( &l, &processQuit, "quit|>" );
 
         for( uint i = 0; i < l.size; i++ )
@@ -114,7 +133,7 @@ void parseCommand( const char * str )
     }
 
 
-    mpc_cleanup( 4, cellRef, gotoCell, quit, command );
+    mpc_cleanup( 7, row, col, gotoCell, gotoRow, gotoCol, quit, command );
 }
 
 void parseSheet( const char * fileName )
