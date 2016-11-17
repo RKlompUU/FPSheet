@@ -12,8 +12,6 @@
 
 #include "debug.h"
 
-#include <push.h>
-
 #include "sheetParser.h"
 
 struct sheet s;
