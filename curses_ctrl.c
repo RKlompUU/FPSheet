@@ -61,7 +61,7 @@ void initCurses( void )
 
     initList( &kListeners );
     initList( &subGroups );
-    for ( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_EDIT; i++ )
+    for ( int i = GROUP_SUB_NAVIG; i <= GROUP_SUB_CMD; i++ )
     {
         pushBack( &subGroups, allocList() );
     }
@@ -157,14 +157,19 @@ void drawSheet()
     render();
     drawCursor();
 
-    mvaddch( 0, 0, ' ' );
     switch ( s.mode )
     {
         case MODE_NAVIG:
         mvaddch( (int)s.wH - 1, 0, 'M' );
             break;
         case MODE_EDIT:
-        mvaddch( (int)s.wH - 1, 0, 'E' );
+        mvaddch( s.wH - 1, 0, 'E' );
+            break;
+        case MODE_VISUAL:
+        mvaddch( s.wH - 1, 0, 'V' );
+            break;
+        case MODE_COMMAND:
+        mvaddstr( s.wH - 1, 0, s.cmd );
             break;
     }
 }
@@ -193,6 +198,15 @@ void drawCell( const struct cell * const c, bool inBorders )
         mvaddnstr( (int)x, (int)y+1, c->res, (int)n );
     else
         mvaddnstr( (int)x, (int)y+1, c->txt, (int)n );
+
+    if( c->bar )
+    {
+        int length = s.cW;
+        struct cell * cRight = findCellP2( s.cells, c->p->row, c->p->col+1 );
+        if( cRight && cRight->bar )
+            length++;
+        mvchgat( (int)x, (int)y+1, length, A_UNDERLINE, 0, NULL );
+    }
 }
 
 void cleanArea( uint x1,
@@ -405,10 +419,27 @@ void drawFooter( void )
 
 void handleEvent( int k )
 {
+    if( k == 27 )
+    {
+        k = KEY_ESC;
+        /*
+        nodelay( stdscr, true );
+        int i = getch();
+        if( i == ERR || i == 27 )
+            k = KEY_ESC;
+        else
+        {
+            k = KEY_ALT;
+            ungetch( i );
+        }
+        nodelay( stdscr, false );
+        */
+    }
     for ( unsigned int i = 0; i < kListeners.size && cursesEnabled; i++ )
     {
         struct keyListener * l = getListener( i );
-        if ( k == l->k ) (*l->callback)( k );
+        if ( k == l->k )
+            (*l->callback)( k );
     }
 }
 

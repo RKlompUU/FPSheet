@@ -5,6 +5,9 @@
 
 #include <ncurses.h>
 
+#define KEY_ESC (-10)
+#define KEY_ALT (-11)
+
 void initCurses( void );
 void exitCurses( bool cleanupMem );
 bool isCursesEnabled( void );
@@ -41,7 +44,9 @@ void cellWindowPos_( uint r,
 enum groupid
 {
     GROUP_SUB_NAVIG,
-    GROUP_SUB_EDIT
+    GROUP_SUB_EDIT,
+    GROUP_SUB_VISUAL,
+    GROUP_SUB_CMD
 };
 void addSubToGroup( int k,
                     enum groupid g );

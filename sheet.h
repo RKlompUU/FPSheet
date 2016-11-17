@@ -9,13 +9,24 @@
 enum mode
 {
     MODE_NAVIG,
-    MODE_EDIT
+    MODE_EDIT,
+    MODE_VISUAL,
+    MODE_COMMAND
 };
+
+struct pos
+{
+    uint row;
+    uint col;
+};
+
 
 struct sheet
 {
     struct map * cells;
+
     char * fileName;
+    char * cmd;
 
     enum mode mode;
 
@@ -51,12 +62,6 @@ struct sheet
 
 extern struct sheet s;
 
-struct pos
-{
-    uint row;
-    uint col;
-};
-
 struct cell
 {
     char * txt;
@@ -65,7 +70,10 @@ struct cell
     struct pos * p;
 
     bool uFlag;
+    bool bar;
 };
+
+void moveCursor( int r, int c );
 
 struct pos getPos( struct list * l,
                    uint i );

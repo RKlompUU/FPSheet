@@ -115,6 +115,17 @@ char * uint2Alpha( uint i )
     return str;
 }
 
+uint alpha2Uint( const char * str )
+{
+    uint res = 0;
+    for( uint i = 0; str[i] != '\0'; i++ )
+    {
+        char c = str[i];
+        res += (c - 'A' + 1) * pow(ALPHA_SIZE, i);
+    }
+    return res - 1;
+}
+
 char * list2Str( struct list * l )
 {
     uint length;
