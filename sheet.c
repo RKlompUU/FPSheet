@@ -83,6 +83,7 @@ static void editCell( int k )
       case 127:
       {
       long unsigned int length = strlen( c->txt );
+      dump_txt( "backspace registered" );
       if( length > 0 )
       {
         c->txt[length-1] = '\0';
@@ -340,7 +341,7 @@ void saveSheet( void )
         return; // TODO: provide feedback to user
     }
 
-    FILE * f = fopen( ".sheet", "w" );
+    FILE * f = fopen( s.fileName, "w" );
 
     /*
      * File format:
@@ -367,6 +368,9 @@ void saveSheet( void )
 void openSheet( const char * fileName )
 {
     parseSheet( fileName );
+    if( s.fileName )
+      free( s.fileName );
+    s.fileName = copyStr( fileName ) ;
     drawHeaders(); // To set lastR and lastC
     moveCursor( s.curRow, s.curCol );
 
@@ -376,7 +380,7 @@ void openSheet( const char * fileName )
 void initSheet( void )
 {
     s.cells = allocMap( posCmp );
-    s.fileName = "";
+    s.fileName = NULL;
 
     s.rowOff = 0;
     s.colOff = 0;
@@ -421,7 +425,9 @@ void initSheet( void )
         addSubToGroup( c, GROUP_SUB_CMD );
     }
     addSubToGroup( KEY_BACKSPACE, GROUP_SUB_EDIT );
+    addSubToGroup( 127, GROUP_SUB_EDIT );
     addSubToGroup( KEY_BACKSPACE, GROUP_SUB_CMD );
+    addSubToGroup( 127, GROUP_SUB_CMD );
 
     subGroup( GROUP_SUB_NAVIG, moveCursorKey );
 
