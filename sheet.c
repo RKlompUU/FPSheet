@@ -92,12 +92,14 @@ static void editCell( int k )
         if( length > 0 )
         {
           c->txt[length-1] = '\0';
+          s.editCursor--;
           s.draw = true;
         }
       }
       break;
     default:
       appendChar( &c->txt, (char) k );
+      s.editCursor++;
       s.draw = true;
       break;
   }
@@ -203,6 +205,11 @@ void modeChange( int k )
             free( c->res );
             c->res = NULL;
           }
+          if( c && c->txt )
+            s.editCursor = strlen( c->txt );
+          else
+            s.editCursor = 0;
+
           break;
         case 'v':
           unsubGroup( GROUP_SUB_NAVIG, moveCursorKey );
@@ -477,6 +484,8 @@ void initSheet( void )
 
   s.prevRow = 0;
   s.prevCol = 0;
+
+  s.editCursor = 0;
 
   s.draw = true;
 
