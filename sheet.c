@@ -201,9 +201,12 @@ static void visualCallback( int k )
       {
         s.delete = false;
         struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
-        if( c && c->txt )
+        if( c )
         {
-          c->txt[0] = '\0';
+          if( c->bar )
+            c->bar = false;
+          if( c->txt )
+            c->txt[0] = '\0';
           if( c->res )
             c->res[0] = '\0';
           s.draw = true;

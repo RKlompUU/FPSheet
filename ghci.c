@@ -27,11 +27,8 @@ static void readall( FILE* in )
     int c;
     while( (c = fgetc(in)) != '>' )
     {
-        //putchar( c );
     }
-    //putchar( c );
     c = fgetc( in );
-    //printf( "%c\n", c );
 }
 
 static int try_read( FILE* in, int tries, uint timeoutLength )
@@ -61,11 +58,8 @@ void init_ghci( void )
 
         dup2( ghci_inpipe[0], STDIN_FILENO );
         dup2( ghci_outpipe[1], STDOUT_FILENO );
-        //int fnull = open( "/dev/null", O_WRONLY );
         FILE* ferr = fopen( "errs_ghci.txt", "w" );
-        //dup2( fnull, STDERR_FILENO );
         dup2( fileno(ferr), STDERR_FILENO );
-        //close( STDERR_FILENO );
 
         prctl( PR_SET_PDEATHSIG, SIGHUP );
 
