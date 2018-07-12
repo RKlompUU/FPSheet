@@ -186,12 +186,32 @@ static void visualCallback( int k )
     case KEY_DOWN:
     case KEY_LEFT:
     case KEY_RIGHT:
+      s.delete = false;
       moveCursorKey( k );
       break;
     case 'u':
       {
+        s.delete = false;
         toggleBar( s.curRow, s.curCol );
         s.draw = true;
+      }
+      break;
+    case 'd':
+      if( s.delete )
+      {
+        s.delete = false;
+        struct cell * c = findCellP2( s.cells, (uint) s.curRow, (uint) s.curCol );
+        if( c && c->txt )
+        {
+          c->txt[0] = '\0';
+          if( c->res )
+            c->res[0] = '\0';
+          s.draw = true;
+        }
+      }
+      else
+      {
+        s.delete = true;
       }
       break;
   }
@@ -268,6 +288,7 @@ void modeChange( int k )
           unsubGroup( GROUP_SUB_VISUAL, visualCallback );
           subGroup( GROUP_SUB_NAVIG, moveCursorKey );
 
+          s.delete = false;
           s.mode = MODE_NAVIG;
           s.draw = true;
       }
@@ -500,6 +521,7 @@ void initSheet( void )
   s.prevCol = 0;
 
   s.editCursor = 0;
+  s.delete = false;
 
   s.draw = true;
 
@@ -540,6 +562,7 @@ void initSheet( void )
   addSubToGroup( KEY_ENTER, GROUP_SUB_VISUAL );
   addSubToGroup( '\r', GROUP_SUB_VISUAL );
   addSubToGroup( 'u', GROUP_SUB_VISUAL );
+  addSubToGroup( 'd', GROUP_SUB_VISUAL );
   addSubToGroup( KEY_ESC, GROUP_SUB_VISUAL );
 
   openSheet( ".sheet" );

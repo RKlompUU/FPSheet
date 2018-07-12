@@ -58,6 +58,7 @@ struct sheet
     uint lastC;
 
     uint editCursor;
+    bool delete;
 
     bool draw;
 };
