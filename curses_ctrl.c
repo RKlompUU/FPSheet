@@ -359,47 +359,26 @@ void drawCursorAs( const char * const str,
     {
         cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_CENTER );
         mvaddchu( r, c, (uint) str[0] );
-        /*
-         if( (int)row != s.rowOff )
-         {
-         cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_LEFT );
-         mvaddchu( r, c, (uint)str[2] );
-         }
-
-         cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
-         mvaddchu( r, c, (uint)str[3] );
-         */
     }
     else
     {
         cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
         mvaddchu( r, c + 1, (uint) str[1] );
     }
-    /*
-     if( (int)row != s.rowOff )
-     {
-     cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_LEFT );
-     mvaddchu( r, c+1, (uint)str[1] );
 
-     cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_LEFT );
-     mvaddchu( r, c, (uint)str[5] );
-     mvaddchu( r, c-1, (uint)str[1] );
-     }
-     cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
-     mvaddchu( r, c+1, (uint)str[1] );
-
-     cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_CENTER );
-     mvaddchu( r, c, (uint)str[0] );
-
-     cellWindowPos( row, col, &r, &c, ALIGN_RIGHT, ALIGN_RIGHT );
-     mvaddchu( r, c, (uint)str[4] );
-     mvaddchu( r, c-1, (uint)str[1] );
-     */
+    if( s.mode == MODE_EDIT )
+    {
+        struct cell * cEdit = findCellP2( s.cells, row, col );
+        int sLen = 0;
+        if( cEdit && cEdit->txt )
+            sLen = strlen( cEdit->txt );
+        cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
+        mvchgat( (int)r-1, (int)c+1+sLen, 1, A_UNDERLINE, 0, NULL );
+    }
 }
 
 void drawCursor( void )
 {
-    //drawCursorAs( "      ", (uint) s.prevRow, (uint) s.prevCol );
     drawCursorAs( "|-,`'.", (uint) s.curRow, (uint) s.curCol );
 
     s.prevRow = s.curRow;
