@@ -55,6 +55,46 @@ void appendChar( char ** str,
     *str = p;
 }
 
+void insertChar( char ** str,
+                 const char c,
+                 uint i )
+{
+    long unsigned int newSize;
+    if ( *str )
+    {
+        newSize = strlen( *str ) + 2; // + 1 for '\0' and + 1 for c
+    }
+    else
+    {
+        newSize = 2;
+    }
+    char * p = realloc( *str, sizeof(char) * newSize );
+
+    if( i > newSize - 2 )
+      i = newSize - 2;
+    else
+    {
+      // 1234
+      //   2
+      //
+      // newsize: 6
+      // i: 2
+      //
+      memmove( &p[i+1], &p[i], newSize - i - 1 );
+    }
+    p[i] = c;
+
+    *str = p;
+}
+
+
+
+void removeChar( char ** str,
+                 uint i )
+{
+  memmove( &(*str)[i], &(*str)[i+1], strlen(*str) - i );
+}
+
 char * uiStr( uint i )
 {
     char * s = malloc( sizeof(char) * DEFAULT_STR_SIZE );

@@ -14,6 +14,13 @@ char * concatStrs( const char * str1,
 void appendChar( char ** str,
                  const char c );
 
+void insertChar( char ** str,
+                 const char c,
+                 uint i );
+
+void removeChar( char ** str,
+                 uint i );
+
 char * iStr( int i );
 char * uiStr( uint i );
 

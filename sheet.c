@@ -89,16 +89,30 @@ static void editCell( int k )
       {
         long unsigned int length = strlen( c->txt );
         dump_txt( "backspace registered" );
-        if( length > 0 )
+        if( s.editCursor > 0 && length > 0 )
         {
-          c->txt[length-1] = '\0';
           s.editCursor--;
+          removeChar( &c->txt, s.editCursor );
           s.draw = true;
         }
       }
       break;
+    case KEY_LEFT:
+      if( s.editCursor > 0 )
+      {
+        s.editCursor--;
+        s.draw = true;
+      }
+      break;
+    case KEY_RIGHT:
+      if( s.editCursor < strlen(c->txt) )
+      {
+        s.editCursor++;
+        s.draw = true;
+      }
+      break;
     default:
-      appendChar( &c->txt, (char) k );
+      insertChar( &c->txt, (char) k, s.editCursor );
       s.editCursor++;
       s.draw = true;
       break;
@@ -503,6 +517,10 @@ void initSheet( void )
   }
   addSubToGroup( KEY_BACKSPACE, GROUP_SUB_EDIT );
   addSubToGroup( 127, GROUP_SUB_EDIT );
+
+  addSubToGroup( KEY_LEFT, GROUP_SUB_EDIT );
+  addSubToGroup( KEY_RIGHT, GROUP_SUB_EDIT );
+
   addSubToGroup( KEY_BACKSPACE, GROUP_SUB_CMD );
   addSubToGroup( 127, GROUP_SUB_CMD );
 

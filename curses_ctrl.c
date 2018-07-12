@@ -369,7 +369,7 @@ void drawCursorAs( const char * const str,
     if( s.mode == MODE_EDIT )
     {
         cellWindowPos( row, col, &r, &c, ALIGN_LEFT, ALIGN_RIGHT );
-        mvchgat( (int)r-1, (int)c+1+s.editCursor, 1, A_UNDERLINE, 0, NULL );
+        mvchgat( (int)r-1, (int)c+1+s.editCursor, 1, A_STANDOUT | A_UNDERLINE, 0, NULL );
     }
 }
 
