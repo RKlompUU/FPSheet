@@ -7,3 +7,6 @@ fpsheet
 *.txt
 vgcore.*
 .sheet
+zheaders
+.zobj/
+zig-cache/
