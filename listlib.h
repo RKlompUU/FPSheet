@@ -27,6 +27,12 @@ int getI( struct list * l,
 char getC( struct list * l,
            unsigned int i );
 
+int findElem(
+    struct list * l,
+    void * e,
+    bool (*cmpElems)(void *,
+                     void *) );
+
 struct map
 {
     struct list * keys;

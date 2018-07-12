@@ -71,9 +71,17 @@ struct cell
 
     bool uFlag;
     bool bar;
+
+    struct list deps;
 };
 
 void moveCursor( int r, int c );
+
+void addDep(
+    struct cell * pDepCell,
+    uint row,
+    uint col );
+void resetUFlags( struct cell * pcell );
 
 struct pos getPos( struct list * l,
                    uint i );
@@ -83,6 +91,10 @@ struct cell * findCellP( struct map * cells,
 struct cell * findCellP2( struct map * cells,
                           uint row,
                           uint col );
+struct cell * findCellP2_(
+    struct map * cells,
+    unsigned int row,
+    unsigned int col );
 struct cell * getCellP( struct list * l,
                         uint i );
 

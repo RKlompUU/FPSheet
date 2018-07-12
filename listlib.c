@@ -67,6 +67,21 @@ void destroy( struct list * l,
     l->size--;
 }
 
+int findElem(
+    struct list * l,
+    void * e,
+    bool (*cmpElems)(void *,
+                     void *) )
+{
+  for( uint i = 0; i < l->size; i++ )
+  {
+    if( cmpElems(e, get(l, i)) )
+      return i;
+  }
+
+  return -1;
+}
+
 void * get( struct list * l,
             unsigned int i )
 {

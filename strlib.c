@@ -117,8 +117,9 @@ char * uint2Alpha( uint i )
 
 uint alpha2Uint( const char * str )
 {
+    uint l = wordLength( str );
     uint res = 0;
-    for( uint i = 0; str[i] != '\0'; i++ )
+    for( uint i = 0; i < l && str[i] != '\0'; i++ )
     {
         char c = str[i];
         res += (c - 'A' + 1) * pow(ALPHA_SIZE, i);
@@ -158,6 +159,23 @@ char * curPos2Str( uint r,
     free( rStr );
     free( cStr );
     return s;
+}
+
+void refStr2Pos(
+    const char * str,
+    size_t strLen,
+    uint * r,
+    uint * c )
+{
+  uint cStart;
+  for( cStart = 1;; cStart++ )
+  {
+    if( str[cStart] < '0' || str[cStart] > '9' )
+      break;
+  }
+  *r = strtol( str, NULL, 10 );
+  *c = alpha2Uint( str + cStart );
+  return;
 }
 
 void revPosStr( char * str, size_t strLen )

@@ -28,6 +28,11 @@ char * list2Str( struct list * l );
 char * curPos2Str( uint r,
                    uint c );
 
+void refStr2Pos(
+    const char * str,
+    size_t strLen,
+    uint * r,
+    uint * c );
 void revPosStr( char * str, size_t strLen );
 
 bool iswordPosRef( char * str );
