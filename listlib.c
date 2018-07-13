@@ -29,16 +29,15 @@ void initList( struct list * l )
     CHECK_ALLOC( l->xs );
 }
 
-void freeListExcl( struct list * l )
+void freeListExcl( struct list * l, t_destructor d )
 {
     for ( unsigned int i = 0; i < l->size; i++ )
-        free( l->xs[i] );
-
+        d( l->xs[i] );
     free( l->xs );
 }
-void freeList( struct list * l )
+void freeList( struct list * l, t_destructor d )
 {
-    freeListExcl( l );
+    freeListExcl( l, d );
     free( l );
 }
 
@@ -121,10 +120,10 @@ struct map * allocMap( int (*cmpKeys)( void *,
     return m;
 }
 
-void freeMap( struct map * m )
+void freeMap( struct map * m, t_destructor dKeys, t_destructor dVals )
 {
-    freeList( m->keys );
-    freeList( m->vals );
+    freeList( m->keys, dKeys );
+    freeList( m->vals, dVals );
 
     free( m );
 }

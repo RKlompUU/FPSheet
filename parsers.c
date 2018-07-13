@@ -120,7 +120,7 @@ void parseCommand( const char * str )
             }
         }
 
-        freeListExcl( &l );
+        freeListExcl( &l, free );
         mpc_ast_delete( r.output );
     }
     else

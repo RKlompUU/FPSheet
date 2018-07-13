@@ -3,6 +3,7 @@
 #include "listlib.h"
 #include "memlib.h"
 
+#include <stdlib.h>
 #include <stdio.h>
 
 void testIntList( void )
@@ -19,5 +20,5 @@ void testIntList( void )
     for ( unsigned int i = 0; i < l->size; i++ )
         printf( "l->xs[i]: %i\n", getI( l, i ) );
 
-    freeList( l );
+    freeList( l, free );
 }

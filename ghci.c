@@ -95,6 +95,8 @@ bool ghci_check_err( void )
             f = fopen( "errs_ghci.txt", "w" );
             fclose( f );
         }
+        else
+          fclose( f );
 
         usleep( 100 );
     }

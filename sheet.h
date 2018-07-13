@@ -102,6 +102,7 @@ struct cell * getCellP( struct list * l,
                         uint i );
 
 struct cell * newC( struct pos * p );
+void deleteC( void * c );
 
 void updateCell( struct cell * c );
 

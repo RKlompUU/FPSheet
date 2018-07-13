@@ -3,6 +3,8 @@
 
 #include "maindefs.h"
 
+typedef void (*t_destructor)(void *);
+
 struct list
 {
     void ** xs;
@@ -12,8 +14,8 @@ struct list
 
 struct list * allocList( void );
 void initList( struct list * l );
-void freeList( struct list * l );
-void freeListExcl( struct list * l );
+void freeList( struct list * l, t_destructor );
+void freeListExcl( struct list * l, t_destructor );
 
 void pushBack( struct list * l,
                void * x );
@@ -52,7 +54,7 @@ struct map
 
 struct map * allocMap( int (*cmpKeys)( void *,
                                        void * ) );
-void freeMap( struct map * m );
+void freeMap( struct map * m, t_destructor dKeys, t_destructor dVals );
 
 void mapAdd( struct map * m,
              void * k,

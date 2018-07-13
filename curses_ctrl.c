@@ -75,11 +75,11 @@ void exitCurses( bool cleanupMem )
     {
         if ( cleanupMem )
         {
-            freeListExcl( &kListeners );
+            freeListExcl( &kListeners, free );
 
             for ( uint i = 0; i < subGroups.size; i++ )
-                freeList( (struct list *) get( &subGroups, i ) );
-            freeListExcl( &subGroups );
+                freeList( (struct list *) get( &subGroups, i ), free );
+            freeListExcl( &subGroups, free );
         }
 
         endwin();

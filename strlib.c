@@ -150,7 +150,7 @@ char * uint2Alpha( uint i )
     while ( i > 0 );
 
     char * str = list2Str( &strBuilder );
-    freeListExcl( &strBuilder );
+    freeListExcl( &strBuilder, free );
 
     return str;
 }

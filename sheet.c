@@ -571,7 +571,7 @@ void initSheet( void )
 void exitSheet( void )
 {
   saveSheet();
-  freeMap( s.cells );
+  freeMap( s.cells, free, deleteC );
 }
 
 struct cell * newC( struct pos * p )
@@ -588,6 +588,13 @@ struct cell * newC( struct pos * p )
   mapAdd( s.cells, p, c );
 
   return c;
+}
+
+void deleteC( void * c_ )
+{
+  struct cell * c = (struct cell *)c_;
+  freeListExcl( &c->deps, identity );
+  free( c );
 }
 
 struct cell * findCellP(

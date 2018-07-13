@@ -23,6 +23,10 @@ void atExitProg( void )
     }
 }
 
+void identity( void * p )
+{
+}
+
 int main( int argc,
           char ** argv )
 {
