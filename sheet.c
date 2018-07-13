@@ -412,7 +412,8 @@ void updateCell( struct cell * pcell )
   free( letDef );
   appendChar( &letName, '\n' );
 
-
+  dump_txt( letName );
+  dump_txt( letCommand );
   ghci_exec( letCommand );
   if( !ghci_check_err() )
   {
@@ -420,19 +421,15 @@ void updateCell( struct cell * pcell )
     if( !pcell->res )
       ghci_check_err(); // Consume the error
   }
-  dump_txt( letCommand );
   if( pcell->res )
   {
     dump_txt( pcell->res );
     dump_txt( "\n" );
   }
   else
-  {
     dump_txt( "no result\n" );
-  }
   free( letName );
   free( letCommand );
-
 
 UPDATE_CHILDS_RETURN:
   for( uint i = 0; i < pcell->deps.size; i++ )
