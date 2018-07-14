@@ -533,6 +533,7 @@ void initSheet( void )
   s.draw = true;
 
   s.mode = MODE_NAVIG;
+  s.cmode = CMODE_NATURAL;
 
   addSubToGroup( KEY_UP, GROUP_SUB_NAVIG );
   addSubToGroup( KEY_DOWN, GROUP_SUB_NAVIG );

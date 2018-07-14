@@ -14,6 +14,12 @@ enum mode
     MODE_COMMAND
 };
 
+enum cursor_mode
+{
+  CMODE_MINIMAL,
+  CMODE_NATURAL
+};
+
 struct pos
 {
     uint row;
@@ -29,6 +35,7 @@ struct sheet
     char * cmd;
 
     enum mode mode;
+    enum cursor_mode cmode;
 
     int rowOff;
     int colOff;
