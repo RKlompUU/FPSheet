@@ -370,6 +370,7 @@ void drawCursor( void )
 {
   uint y;
   uint x;
+  struct cell * c = findCellP2( s.cells, s.curRow, s.curCol );
 
   switch( s.cmode )
   {
@@ -392,8 +393,12 @@ void drawCursor( void )
       {
         cellWindowPos( s.curRow, s.curCol, &y, &x, ALIGN_LEFT, ALIGN_CENTER );
 
-        struct cell * c = findCellP2( s.cells, s.curRow, s.curCol );
-        int length = s.cW;
+        int length;
+        if( s.mode == MODE_EDIT )
+          length = 0;
+        else
+          length = s.cW;
+
         if( c )
         {
           if( s.mode != MODE_EDIT && c->res )
@@ -405,15 +410,22 @@ void drawCursor( void )
           else if( c->txt && c->txt[0] != '\0' )
             length = strlen( c->txt );
         }
-        mvchgat( (int)y, (int)x+1, length, A_STANDOUT, 0, NULL );
+        ulong attr = A_STANDOUT;
+        if( c && c->bar )
+          attr |= A_UNDERLINE;
+        mvchgat( (int)y, (int)x+1, length, attr, 0, NULL );
       }
       break;
   }
 
   if( s.mode == MODE_EDIT )
   {
+    ulong attr = A_STANDOUT;
+    if( !c || !c->bar )
+      attr |= A_UNDERLINE;
+
     cellWindowPos( s.curRow, s.curCol, &y, &x, ALIGN_LEFT, ALIGN_CENTER );
-    mvchgat( (int)y, (int)x+1+s.editCursor, 1, A_STANDOUT | A_UNDERLINE, 0, NULL );
+    mvchgat( (int)y, (int)x+1+s.editCursor, 1, attr, 0, NULL );
   }
 
   s.prevRow = s.curRow;
