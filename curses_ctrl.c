@@ -452,7 +452,8 @@ void unsubKey( int k,
     for ( unsigned int i = 0; i < kListeners.size; i++ )
     {
         struct keyListener * l = getListener( i );
-        if ( l->k == k && l->callback == callback ) destroy( &kListeners, i-- );
+        if ( l->k == k && l->callback == callback )
+            destroy( &kListeners, i-- );
     }
 }
 

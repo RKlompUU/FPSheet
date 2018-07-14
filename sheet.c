@@ -391,6 +391,8 @@ void updateCell( struct cell * pcell )
   {
     appendChar( &letDef, '\n' );
     dump_txt( letDef );
+    if( pcell->res )
+      free( pcell->res );
     pcell->res = ghci_exec( letDef );
     if( pcell->res )
       dump_txt( pcell->res );
@@ -572,6 +574,12 @@ void exitSheet( void )
 {
   saveSheet();
   freeMap( s.cells, free, deleteC );
+
+  free( s.fileName );
+  s.fileName = NULL;
+
+  free( s.cmd );
+  s.cmd = NULL;
 }
 
 struct cell * newC( struct pos * p )
@@ -594,6 +602,10 @@ void deleteC( void * c_ )
 {
   struct cell * c = (struct cell *)c_;
   freeListExcl( &c->deps, identity );
+  if( c->txt )
+    free( c->txt );
+  if( c->res )
+    free( c->res );
   free( c );
 }
 

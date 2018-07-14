@@ -5,6 +5,7 @@
 #include "debug.h"
 #include "mpc.h"
 #include "strlib.h"
+#include "ghci.h"
 
 #include "sheet.h"
 #include "curses_ctrl.h"
@@ -70,7 +71,8 @@ static void processGotoCol( ast * gotoAst )
 }
 static void processQuit( ast * quitAst )
 {
-    exitCurses( false );
+    exitCurses( true );
+    exit_ghci();
 }
 
 void parseCommand( const char * str )
@@ -202,4 +204,5 @@ void parseSheet( const char * fileName )
     }
 
     mpc_cleanup( 7, num, sheet, str, meta, cell, cells, boolean );
+    fclose( f );
 }

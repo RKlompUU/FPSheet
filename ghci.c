@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <sys/prctl.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <fcntl.h>
 
@@ -20,7 +21,8 @@ static int ghci_inpipe[2];
 // pipe2: parent[0] <- child[1]
 static int ghci_outpipe[2];
 
-FILE* ghci_out;
+static FILE* ghci_out;
+static int pid;
 
 static void readall( FILE* in )
 {
@@ -50,7 +52,7 @@ void init_ghci( void )
     if( pipe(ghci_outpipe) )
         crash( "failed to create pipe for ghci" );
 
-    int pid = fork();
+    pid = fork();
     if( pid == 0 )
     {
         close( ghci_inpipe[1] );
@@ -78,6 +80,19 @@ void init_ghci( void )
         readall( ghci_out );
         return;
     }
+}
+
+void exit_ghci( void )
+{
+  kill( pid, SIGTERM );
+  dump_txt( "sent terminate signal to ghci, waiting closure\n" );
+  int status;
+  wait(&status);
+  dump_txt( "ghci closed\n" );
+
+  fclose( ghci_out );
+  close( ghci_inpipe[1] );
+  close( ghci_outpipe[0] );
 }
 
 bool ghci_check_err( void )

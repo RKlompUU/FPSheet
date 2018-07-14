@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 void init_ghci( void );
+void exit_ghci( void );
 
 char * ghci_exec( const char * expr );
 bool ghci_check_err( void );
