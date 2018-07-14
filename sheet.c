@@ -449,6 +449,11 @@ void saveSheet( void )
   }
 
   FILE * f = fopen( s.fileName, "w" );
+  if( !f )
+  {
+    dump_txt( "Failed to open savefile!" );
+    return;
+  }
 
   /*
    * File format:
@@ -475,8 +480,6 @@ void saveSheet( void )
 void openSheet( const char * fileName )
 {
   parseSheet( fileName );
-  if( s.fileName )
-    free( s.fileName );
   s.fileName = copyStr( fileName ) ;
   drawHeaders(); // To set lastR and lastC
   moveCursor( s.curRow, s.curCol );

@@ -71,8 +71,7 @@ static void processGotoCol( ast * gotoAst )
 }
 static void processQuit( ast * quitAst )
 {
-    exitCurses( true );
-    exit_ghci();
+    stopCurses();
 }
 
 void parseCommand( const char * str )

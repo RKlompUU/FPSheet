@@ -43,8 +43,10 @@ int main( int argc,
 
     dump_txt( "everything initialized, entering control loop\n" );
     cursesCtrlLoop();
-    exitCurses( true );
+
     exitSheet();
+    exitCurses( true );
+    exit_ghci();
 
     dump_txt( "shutdown\n" );
 

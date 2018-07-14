@@ -31,6 +31,11 @@ struct list subGroups; // group subscriptions
 bool cursesEnabled = false;
 bool keepCursesRunning = false;
 
+void stopCurses( void )
+{
+  keepCursesRunning = false;
+}
+
 bool isCursesEnabled( void )
 {
     return cursesEnabled;

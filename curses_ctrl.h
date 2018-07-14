@@ -12,6 +12,7 @@ void initCurses( void );
 void exitCurses( bool cleanupMem );
 bool isCursesEnabled( void );
 void cursesCtrlLoop( void );
+void stopCurses( void );
 
 void drawSheet( void );
 void drawCell( const struct cell * const c, bool inBorders );
