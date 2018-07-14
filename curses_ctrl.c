@@ -287,7 +287,7 @@ void drawHeaders( void )
 
   uint bcH = s.cH + s.bH; // Bordered cell height
   uint lastR = (uint) s.rowOff + (s.wH - s.hH - bcH - (s.bH == 0 ? 1 : 1)) / bcH; // - bcH, - 1 to prevent a possible half-row
-  // This conversion from luint to uint is save:
+  // This conversion from luint to uint is safe:
   //    The length of row numbers will never even come close to the limits of uint
   //    , since long before that point other limits would've been reached already
   s.hW = (uint) uiLength( lastR ) + 1; // + 1 for the border
@@ -297,17 +297,20 @@ void drawHeaders( void )
   else
     cleanArea( s.hH, 0, s.wH, s.oldHW );
 
-  uint x;
+  uint y;
   for ( uint r = (uint) s.rowOff; r <= lastR; r++ )
   {
-    cellWindowPos( r, 0, &x, NULL, ALIGN_CENTER, ALIGN_CENTER );
+    cellWindowPos( r, 0, &y, NULL, ALIGN_CENTER, ALIGN_CENTER );
     char * str = uiStr( r );
-    mvaddstr( (int )x, 0, str ); // Save conversion
+    mvaddstr( (int)y, 0, str ); // Save conversion
+
+    if( (int)r == s.curRow )
+      mvchgat( (int)y, 0, strlen(str), A_STANDOUT, 0, NULL );
     free( str );
   }
   // Row numbers border
-  for ( x = s.hH; x < s.wH; x++ )
-    mvaddch( (int )x, (int )s.hW - 1, '|' );
+  for ( y = s.hH; y < s.wH; y++ )
+    mvaddch( (int )y, (int )s.hW - 1, '|' );
 
   s.lastR = lastR;
 
@@ -323,17 +326,22 @@ void drawHeaders( void )
 
   cleanArea( 0, 0, s.hH, s.wW );
 
-  uint y;
+  uint x;
   for ( uint c = (uint) s.colOff; c <= lastC; c++ )
   {
-    cellWindowPos( 0, c, NULL, &y, ALIGN_CENTER, ALIGN_CENTER );
+    cellWindowPos( 0, c, NULL, &x, ALIGN_CENTER, ALIGN_CENTER );
     char * str = uint2Alpha( c );
-    mvaddstr( 0, (int )y, str ); // Save conversion
+    x -= strlen(str)/2;
+    mvaddstr( 0, (int)x, str ); // Save conversion
+
+    if( (int)c == s.curCol )
+      mvchgat( 0, (int)x, strlen(str), A_STANDOUT, 0, NULL );
+
     free( str );
   }
 
-  for ( y = s.hW; y < s.wW; y++ )
-    mvaddchu( s.hH - 1, y, '-' );
+  for ( x = s.hW; x < s.wW; x++ )
+    mvaddchu( s.hH - 1, x, '-' );
   mvaddchu( s.hH - 1, s.hW - 1, ',' );
 
   s.lastC = lastC;
