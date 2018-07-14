@@ -419,6 +419,8 @@ void updateCell( struct cell * pcell )
   ghci_exec( letCommand );
   if( !ghci_check_err() )
   {
+    if( pcell->res )
+      free( pcell->res );
     pcell->res = ghci_exec( letName );
     if( !pcell->res )
       ghci_check_err(); // Consume the error
