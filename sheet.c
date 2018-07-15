@@ -176,7 +176,6 @@ static void visualCallback( int k )
     case KEY_DOWN:
     case KEY_LEFT:
     case KEY_RIGHT:
-      s.delete = false;
       moveCursorKey( k );
       break;
     case 'u':
