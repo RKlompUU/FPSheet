@@ -36,3 +36,7 @@ Pressing "v" in navigation mode changes the mode to visual mode. Underlining of 
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Reading and writing of user defined save files (i.e. any filename, not just ".sheet").
 - Exporting to and importing from excell savefiles
+
+### WHY C?!?!
+
+No idea
