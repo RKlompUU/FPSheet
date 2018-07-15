@@ -157,14 +157,16 @@ char * uint2Alpha( uint i )
 
 uint alpha2Uint( const char * str )
 {
-    uint l = wordLength( str );
-    uint res = 0;
-    for( uint i = 0; i < l && str[i] != '\0'; i++ )
-    {
-        char c = str[i];
-        res += (c - 'A' + 1) * pow(ALPHA_SIZE, i);
-    }
-    return res - 1;
+  uint l = wordLength( str );
+  uint res = 0;
+  for( uint i = 0; i < l && str[i] != '\0'; i++ )
+  {
+    char c = str[i];
+    if( c < 'A' || c > 'Z' )
+      break;
+    res += (c - 'A' + 1) * pow(ALPHA_SIZE, i);
+  }
+  return res - 1;
 }
 
 char * list2Str( struct list * l )
@@ -195,7 +197,7 @@ char * curPos2Str( uint r,
     sprintf( rStr, "%u", r );
     char * cStr = uint2Alpha( c );
 
-    char * s = concatStrs( rStr, cStr );
+    char * s = concatStrs( cStr, rStr );
     free( rStr );
     free( cStr );
     return s;
@@ -207,33 +209,15 @@ void refStr2Pos(
     uint * r,
     uint * c )
 {
-  uint cStart;
-  for( cStart = 1;; cStart++ )
+  uint rStart;
+  for( rStart = 1;; rStart++ )
   {
-    if( str[cStart] < '0' || str[cStart] > '9' )
+    if( str[rStart] < 'A' || str[rStart] > 'Z' )
       break;
   }
-  *r = strtol( str, NULL, 10 );
-  *c = alpha2Uint( str + cStart );
+  *c = alpha2Uint( str );
+  *r = strtol( str + rStart, NULL, 10 );
   return;
-}
-
-void revPosStr( char * str, size_t strLen )
-{
-    long unsigned int i;
-    for( i = 0;; i++ )
-    {
-        if( str[i] < '0' || str[i] > '9' )
-            break;
-    }
-    char * swp = malloc( sizeof(char) * i );
-    memcpy( swp, str, sizeof(char) * i );
-
-    size_t j = sizeof(char) * (strLen-i);
-    memmove( str, &str[i], j );
-    memcpy( &str[j], swp, sizeof(char) * i );
-
-    free( swp );
 }
 
 size_t sizeofUIntStr( uint x )
@@ -249,25 +233,25 @@ bool iswordPosRef( char * str )
     for( uint i = 0; i < strlen(str); i++ )
     {
         char c = str[i];
-        if( !hasNum )
+        if( !hasChar )
         {
-            if( c >= '0' && c <= '9' )
-                hasNum = true;
-            else
-                return false;
-        }
-        else if( !hasChar )
-        {
-            if( c >= '0' && c <= '9' )
-                continue;
             if( c >= 'A' && c <= 'Z' )
                 hasChar = true;
             else
                 return false;
         }
-        else
+        else if( !hasNum )
         {
             if( c >= 'A' && c <= 'Z' )
+                continue;
+            if( c >= '0' && c <= '9' )
+                hasNum = true;
+            else
+                return false;
+        }
+        else
+        {
+            if( c >= '0' && c <= '9' )
                 continue;
             else if( c == ' ' )
                 return true;

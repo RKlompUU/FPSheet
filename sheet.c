@@ -356,7 +356,7 @@ void updateCell( struct cell * pcell )
   for( uint i = 0; i < strlen(letDef); i++ )
   {
     char c = letDef[i];
-    if( c >= '0' && c <= '9' )
+    if( c >= 'A' && c <= 'Z' )
     {
       if( iswordPosRef(&letDef[i]) )
       {
@@ -380,7 +380,6 @@ void updateCell( struct cell * pcell )
 #endif
         addDep( pcell, refR, refC );
 
-        revPosStr( &letDef[i], refStrLength );
         letDef[i] = (char) tolower( letDef[i] );
       }
     }
@@ -406,7 +405,6 @@ void updateCell( struct cell * pcell )
   }
 
   char * letName = curPos2Str( pcell->p->row, pcell->p->col );
-  revPosStr( letName, strlen(letName) );
   letName[0] = (char)tolower( letName[0] );
 
   //"let " letName " = " letDef "\n"

@@ -78,7 +78,8 @@ void parseCommand( const char * str )
 {
     mpc_parser_t * row      = mpc_new( "row" );
     mpc_parser_t * col      = mpc_new( "col" );
-    mpc_parser_t * gotoCell = mpc_new( "gotoCell" );
+    mpc_parser_t * gotoCellA = mpc_new( "gotoCellA" );
+    mpc_parser_t * gotoCellB = mpc_new( "gotoCellB" );
     mpc_parser_t * gotoRow  = mpc_new( "gotoRow" );
     mpc_parser_t * gotoCol  = mpc_new( "gotoCol" );
     mpc_parser_t * quit     = mpc_new( "quit" );
@@ -87,12 +88,13 @@ void parseCommand( const char * str )
     mpca_lang( MPCA_LANG_WHITESPACE_SENSITIVE,
                " row      : /[0-9]+/; "
                " col      : /[A-Z]+/; "
-               " gotoCell : ':' <row> <col>; "
+               " gotoCellA : ':' <row> <col>; "
+               " gotoCellB : ':' <col> <row>; "
                " gotoCol  : ':' <col>; "
                " gotoRow  : ':' <row>; "
                " quit     : ':' 'q'; "
-               " command  : /^/ (<gotoCell> | <gotoRow> | <gotoCol> | <quit>) /$/; ",
-               row, col, gotoCell, gotoRow, gotoCol, quit, command, NULL );
+               " command  : /^/ (<gotoCellA> | <gotoCellB> | <gotoRow> | <gotoCol> | <quit>) /$/; ",
+               row, col, gotoCellA, gotoCellB, gotoRow, gotoCol, quit, command, NULL );
 
     mpc_result_t r;
     if( mpc_parse("", str, command, &r) )
@@ -105,7 +107,8 @@ void parseCommand( const char * str )
 
         struct list l;
         initList( &l );
-        addCmd2List( &l, &processGotoCell, "gotoCell|>" );
+        addCmd2List( &l, &processGotoCell, "gotoCellA|>" );
+        addCmd2List( &l, &processGotoCell, "gotoCellB|>" );
         addCmd2List( &l, &processGotoRow, "gotoRow|>" );
         addCmd2List( &l, &processGotoCol, "gotoCol|>" );
         addCmd2List( &l, &processQuit, "quit|>" );
@@ -134,7 +137,7 @@ void parseCommand( const char * str )
     }
 
 
-    mpc_cleanup( 7, row, col, gotoCell, gotoRow, gotoCol, quit, command );
+    mpc_cleanup( 7, row, col, gotoCellA, gotoCellB, gotoRow, gotoCol, quit, command );
 }
 
 void parseSheet( const char * fileName )
