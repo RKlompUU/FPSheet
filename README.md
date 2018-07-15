@@ -1,6 +1,8 @@
 # FPSheet
 ## A Spreadsheet program with Haskell as the scripting language
 
+![Alt text](imgs/example.png?raw=true "Example")
+
 FPSheet is a spreadsheet program that runs inside a terminal.
 The scripting language for computing cell's values from formulas runs Haskell internally.
 This arguably provides a more uniform experience than what is provided by the scripting languages of standard spreadsheet programs.
