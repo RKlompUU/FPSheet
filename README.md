@@ -27,4 +27,4 @@ The tool starts in navigation mode. This mode is comparable to vim's command mod
 
 Cells with definitions starting with a ":" character are treated as ghci commands and are sent as is to ghci (whereas any other cell's definition is prepended with "let \<cell coordinate\> = ". This gives access to ghci's internals such as inferred types of cells (e.g. try out defining a cell as ":t \<some other cell\>").
 
-Pressing "v" in navigation mode changes the mode to visual mode. Underlining of cells can be toggled in this mode by pressing "u". A double press of "d" in visual mode deletes the selected cell's content.
+Pressing "v" in navigation mode changes the mode to visual mode. Underlining of cells can be toggled in this mode by pressing "u". A double press of "d" in visual mode deletes the selected cell's content. Pressing ESCAPE exits visual mode.
