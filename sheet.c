@@ -86,11 +86,11 @@ static void editStrCallback( int k )
     case KEY_BACKSPACE:
     case 127:
       {
-        long unsigned int length = strlen( s.editStr );
+        long unsigned int length = strlen( *s.editStr );
         if( s.editCursor > 0 && length > 0 )
         {
           s.editCursor--;
-          removeChar( &s.editStr, s.editCursor );
+          removeChar( s.editStr, s.editCursor );
           s.draw = true;
         }
       }
@@ -103,24 +103,24 @@ static void editStrCallback( int k )
       }
       break;
     case KEY_RIGHT:
-      if( s.editCursor < strlen(s.editStr) )
+      if( s.editCursor < strlen(*s.editStr) )
       {
         s.editCursor++;
         s.draw = true;
       }
       break;
     default:
-      insertChar( &s.editStr, (char) k, s.editCursor );
+      insertChar( s.editStr, (char) k, s.editCursor );
       s.editCursor++;
       s.draw = true;
       break;
   }
 }
 
-void enterStrEdit( char * str )
+void enterStrEdit( char ** str )
 {
   s.editStr = str;
-  s.editCursor = strlen( str );
+  s.editCursor = strlen( *str );
 
   subGroup( GROUP_SUB_EDIT, editStrCallback );
 }
@@ -222,7 +222,7 @@ void modeChange( int k )
           unsubGroup( GROUP_SUB_NAVIG, moveCursorKey );
 
           struct cell * c = findCellP2_( s.cells, (uint) s.curRow, (uint) s.curCol );
-          enterStrEdit( c->txt );
+          enterStrEdit( &c->txt );
 
           s.mode = MODE_EDIT;
           s.draw = true;
@@ -243,7 +243,7 @@ void modeChange( int k )
           break;
         case ':':
           unsubGroup( GROUP_SUB_NAVIG, moveCursorKey );
-          enterStrEdit( s.cmd );
+          enterStrEdit( &s.cmd );
 
           s.mode = MODE_COMMAND;
           s.draw = true;

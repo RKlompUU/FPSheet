@@ -137,7 +137,7 @@ void parseCommand( const char * str )
     }
 
 
-    mpc_cleanup( 7, row, col, gotoCellA, gotoCellB, gotoRow, gotoCol, quit, command );
+    mpc_cleanup( 8, row, col, gotoCellA, gotoCellB, gotoRow, gotoCol, quit, command );
 }
 
 void parseSheet( const char * fileName )
