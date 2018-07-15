@@ -173,6 +173,7 @@ void drawSheet()
       break;
     case MODE_COMMAND:
       mvaddstr( s.wH - 1, 0, s.cmd );
+      mvchgat( s.wH - 1, s.editCursor, 1, A_STANDOUT | A_UNDERLINE, 0, NULL );
       break;
   }
 }

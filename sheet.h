@@ -65,6 +65,8 @@ struct sheet
     uint lastC;
 
     uint editCursor;
+    char * editStr;
+
     bool delete;
 
     bool draw;
@@ -118,5 +120,11 @@ void exitSheet( void );
 
 void saveSheet( void );
 void openSheet( const char * fileName );
+
+void undo( void );
+void redo( void );
+
+void enterStrEdit( char * str );
+void exitStrEdit( void );
 
 #endif
