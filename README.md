@@ -15,6 +15,8 @@ Interestingly, since Haskell is lazily evaluated, and since Haskell regards func
 
 dependencies: libncurses, libm, ghc
 
+Additional dependency mention: libmpc (parser combinators in c), it is already present within the repo however with some minor type related edits.
+
 run: make
 
 ### Usage
