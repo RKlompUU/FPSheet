@@ -306,6 +306,15 @@ void modeChange( int k )
           s.mode = MODE_NAVIG;
           s.draw = true;
           break;
+        case KEY_ESC:
+          exitStrEdit();
+          subGroup( GROUP_SUB_NAVIG, moveCursorKey );
+
+          s.cmd[0] = '\0';
+          s.mode = MODE_NAVIG;
+          s.draw = true;
+          break;
+
       }
       break;
   }
