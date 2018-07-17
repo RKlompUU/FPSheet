@@ -9,21 +9,21 @@ static FILE* f;
 
 void init_debug( void )
 {
-    remove( fpath );
-    f = fopen( fpath, "a" );
+  remove( fpath );
+  f = fopen( fpath, "a" );
 }
 void exit_debug( void )
 {
-    fclose( f );
+  fclose( f );
 }
 
 void dump_txt( const char * txt )
 {
-    fwrite( txt, sizeof(char), strlen(txt), f );
-    fflush( f );
+  fwrite( txt, sizeof(char), strlen(txt), f );
+  fflush( f );
 }
 
 FILE * dumpFile( void )
 {
-    return f;
+  return f;
 }

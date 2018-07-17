@@ -11,66 +11,64 @@
 
 struct list * allocList( void )
 {
-    struct list * l = malloc( sizeof(struct list) );
-    CHECK_ALLOC( l );
+  struct list * l = malloc( sizeof(struct list) );
+  CHECK_ALLOC( l );
 
-    initList( l );
-    return l;
+  initList( l );
+  return l;
 }
 
 void initList( struct list * l )
 {
-    unsigned int initSize = ALLOC_BLOCK_SIZE;
+  unsigned int initSize = ALLOC_BLOCK_SIZE;
 
-    l->xs = malloc( sizeof(void *) * initSize );
-    l->size = 0;
-    l->allocated = initSize;
+  l->xs = malloc( sizeof(void *) * initSize );
+  l->size = 0;
+  l->allocated = initSize;
 
-    CHECK_ALLOC( l->xs );
+  CHECK_ALLOC( l->xs );
 }
 
 void freeListExcl( struct list * l, t_destructor d )
 {
-    for ( unsigned int i = 0; i < l->size; i++ )
-        d( l->xs[i] );
-    free( l->xs );
+  for ( unsigned int i = 0; i < l->size; i++ )
+    d( l->xs[i] );
+  free( l->xs );
 }
 void freeList( struct list * l, t_destructor d )
 {
-    freeListExcl( l, d );
-    free( l );
+  freeListExcl( l, d );
+  free( l );
 }
 
 void increaseList( struct list * l )
 {
-    l->allocated += ALLOC_BLOCK_SIZE;
+  l->allocated += ALLOC_BLOCK_SIZE;
 
-    l->xs = realloc( l->xs, sizeof(void *) * l->allocated );
-    CHECK_ALLOC( l->xs );
+  l->xs = realloc( l->xs, sizeof(void *) * l->allocated );
+  CHECK_ALLOC( l->xs );
 }
 
 void pushBack( struct list * l,
                void * x )
 {
-    while ( l->size >= l->allocated )
-        increaseList( l );
+  while ( l->size >= l->allocated )
+    increaseList( l );
 
-    l->xs[l->size++] = x;
+  l->xs[l->size++] = x;
 }
 
 void destroy( struct list * l,
               unsigned int i )
 {
-    free( l->xs[i] );
-    memmove( &l->xs[i], &l->xs[i + 1], sizeof(void *) * (l->size - (i + 1)) );
-    l->size--;
+  free( l->xs[i] );
+  memmove( &l->xs[i], &l->xs[i + 1], sizeof(void *) * (l->size - (i + 1)) );
+  l->size--;
 }
 
-int findElem(
-    struct list * l,
-    void * e,
-    bool (*cmpElems)(void *,
-                     void *) )
+int findElem( struct list * l,
+              void * e,
+              bool (*cmpElems)(void *, void *) )
 {
   for( uint i = 0; i < l->size; i++ )
   {
@@ -85,83 +83,77 @@ void * get( struct list * l,
             unsigned int i )
 {
 #ifdef PARAM_CHECKS
-    if( i >= l->size )
-    {
-        crash( "get out of bounds!" );
-    }
+  if( i >= l->size )
+  {
+    crash( "get out of bounds!" );
+  }
 #endif
 
-    return l->xs[i];
+  return l->xs[i];
 }
 
 int getI( struct list * l,
           unsigned int i )
 {
-    return *((int *) get( l, i ));
+  return *((int *) get( l, i ));
 }
 
 char getC( struct list * l,
            uint i )
 {
-    return *((char *) get( l, i ));
+  return *((char *) get( l, i ));
 }
 
-struct map * allocMap( int (*cmpKeys)( void *,
-                                       void * ) )
+struct map * allocMap( int (*cmpKeys)(void *, void *) )
 {
-    struct map * m = malloc( sizeof(struct map) );
-    CHECK_ALLOC( m );
+  struct map * m = malloc( sizeof(struct map) );
+  CHECK_ALLOC( m );
 
-    m->keys = allocList();
-    m->vals = allocList();
-    m->cmpKeys = cmpKeys;
-    m->pSize = &m->vals->size;
+  m->keys = allocList();
+  m->vals = allocList();
+  m->cmpKeys = cmpKeys;
+  m->pSize = &m->vals->size;
 
-    return m;
+  return m;
 }
 
 void freeMap( struct map * m, t_destructor dKeys, t_destructor dVals )
 {
-    freeList( m->keys, dKeys );
-    freeList( m->vals, dVals );
+  freeList( m->keys, dKeys );
+  freeList( m->vals, dVals );
 
-    free( m );
+  free( m );
 }
 
-void * getVal( struct map * m,
-               unsigned int i )
+void * getVal( struct map * m, unsigned int i )
 {
-    if( i >= *m->pSize )
-        return NULL;
-
-    return get( m->vals, i );
-}
-
-void * getKey( struct map * m,
-               unsigned int i )
-{
-    if( i >= *m->pSize )
-        return NULL;
-
-    return get( m->keys, i );
-}
-
-void mapAdd( struct map * m,
-             void * k,
-             void * v )
-{
-    pushBack( m->keys, k );
-    pushBack( m->vals, v );
-}
-
-void * mapFind( struct map * m,
-                void * k )
-{
-    for ( unsigned int i = 0; i < *m->pSize; i++ )
-    {
-        if ( (*m->cmpKeys)( get( m->keys, i ), k ) == 0 )
-            return get( m->vals, i );
-    }
-
+  if( i >= *m->pSize )
     return NULL;
+
+  return get( m->vals, i );
+}
+
+void * getKey( struct map * m, unsigned int i )
+{
+  if( i >= *m->pSize )
+    return NULL;
+
+  return get( m->keys, i );
+}
+
+void mapAdd( struct map * m, void * k, void * v )
+{
+  pushBack( m->keys, k );
+  pushBack( m->vals, v );
+}
+
+void * mapFind( struct map * m, void * k )
+{
+  for ( unsigned int i = 0; i < *m->pSize; i++ )
+  {
+    if ( (*m->cmpKeys)( get( m->keys, i ), k ) == 0 )
+      return get( m->vals, i );
+  }
+
+  return NULL;
 }

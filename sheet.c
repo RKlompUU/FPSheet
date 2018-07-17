@@ -20,9 +20,7 @@ struct sheet s;
 // Utility functions
 //
 
-static int posCmp(
-    void * p1_,
-    void * p2_ )
+static int posCmp( void * p1_, void * p2_ )
 {
   struct pos * p1 = (struct pos *) p1_;
   struct pos * p2 = (struct pos *) p2_;
@@ -36,9 +34,7 @@ static int posCmp(
   return 0;
 }
 
-static bool cmpCells(
-    void * c1_,
-    void * c2_ )
+static bool cmpCells( void * c1_, void * c2_ )
 {
   struct cell * c1 = (struct cell *)c1_;
   struct cell * c2 = (struct cell *)c2_;
@@ -47,9 +43,7 @@ static bool cmpCells(
          (c1->p->col == c2->p->col);
 }
 
-static void gotoOff(
-    int r,
-    int c )
+static void gotoOff( int r, int c )
 {
   if ( r < 0 || c < 0 ) return;
 
@@ -59,9 +53,7 @@ static void gotoOff(
   s.draw = true;
 }
 
-void moveCursor(
-    int r,
-    int c )
+void moveCursor( int r, int c )
 {
   if ( r < 0 || c < 0 ) return;
 
@@ -320,10 +312,7 @@ void modeChange( int k )
   }
 }
 
-void addDep(
-    struct cell * pDepCell,
-    uint row,
-    uint col )
+void addDep( struct cell * pDepCell, uint row, uint col )
 {
   struct cell * c = findCellP2_( s.cells, row, col );
   int i = findElem( &c->deps, pDepCell, cmpCells );
@@ -618,16 +607,11 @@ void deleteC( void * c_ )
   free( c );
 }
 
-struct cell * findCellP(
-    struct map * cells,
-    struct pos p )
+struct cell * findCellP( struct map * cells, struct pos p )
 {
   return (struct cell *) mapFind( cells, &p );
 }
-struct cell * findCellP2(
-    struct map * cells,
-    unsigned int row,
-    unsigned int col )
+struct cell * findCellP2( struct map * cells, unsigned int row, unsigned int col )
 {
   struct pos p;
   p.row = row;
@@ -636,10 +620,7 @@ struct cell * findCellP2(
   return (struct cell *) mapFind( cells, &p );
 }
 
-struct cell * findCellP2_(
-    struct map * cells,
-    unsigned int row,
-    unsigned int col )
+struct cell * findCellP2_( struct map * cells, unsigned int row, unsigned int col )
 {
   struct cell * c = findCellP2( cells, row, col );
   if ( c == NULL )
@@ -655,16 +636,12 @@ struct cell * findCellP2_(
 }
 
 
-struct cell * getCellP(
-    struct list * l,
-    unsigned int i )
+struct cell * getCellP( struct list * l, unsigned int i )
 {
   return (struct cell *) get( l, i );
 }
 
-struct pos getPos(
-    struct list * l,
-    unsigned int i )
+struct pos getPos( struct list * l, unsigned int i )
 {
   return *(struct pos *) get( l, i );
 }

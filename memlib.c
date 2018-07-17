@@ -5,16 +5,16 @@
 
 int * newI( int x )
 {
-    int * p = malloc( sizeof(int) );
-    CHECK_ALLOC( p );
-    *p = x;
-    return p;
+  int * p = malloc( sizeof(int) );
+  CHECK_ALLOC( p );
+  *p = x;
+  return p;
 }
 
 uint * newUI( uint x )
 {
-    uint * p = malloc( sizeof(uint) );
-    CHECK_ALLOC( p );
-    *p = x;
-    return p;
+  uint * p = malloc( sizeof(uint) );
+  CHECK_ALLOC( p );
+  *p = x;
+  return p;
 }

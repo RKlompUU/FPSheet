@@ -183,11 +183,11 @@ void drawCell( const struct cell * const c, bool inBorders )
   uint x;
   uint y;
   cellWindowPos( c->p->row,// - (uint) s.rowOff,
-      c->p->col,// - (uint) s.colOff,
-      &x,
-      &y,
-      ALIGN_LEFT,
-      ALIGN_CENTER );
+                 c->p->col,// - (uint) s.colOff,
+                 &x,
+                 &y,
+                 ALIGN_LEFT,
+                 ALIGN_CENTER );
   uint n;
   if( inBorders )
     n = s.cW;

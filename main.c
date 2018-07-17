@@ -11,46 +11,45 @@
 
 void exitSignal( int k )
 {
-    exitCurses( false );
+  exitCurses( false );
 }
 
 void atExitProg( void )
 {
-    if ( isCursesEnabled() )
-    {
-        exitSheet();
-        exitCurses( true );
-    }
+  if ( isCursesEnabled() )
+  {
+    exitSheet();
+    exitCurses( true );
+  }
 }
 
 void identity( void * p )
 {
 }
 
-int main( int argc,
-          char ** argv )
+int main( int argc, char ** argv )
 {
-    atexit( atExitProg );
+  atexit( atExitProg );
 
-    init_debug();
-    dump_txt( "initializing ghci backend\n" );
-    init_ghci();
+  init_debug();
+  dump_txt( "initializing ghci backend\n" );
+  init_ghci();
 
-    dump_txt( "initializing ncurses\n" );
-    initCurses();
-    dump_txt( "initializing spreadsheet\n" );
-    initSheet();
+  dump_txt( "initializing ncurses\n" );
+  initCurses();
+  dump_txt( "initializing spreadsheet\n" );
+  initSheet();
 
-    dump_txt( "everything initialized, entering control loop\n" );
-    cursesCtrlLoop();
+  dump_txt( "everything initialized, entering control loop\n" );
+  cursesCtrlLoop();
 
-    exitSheet();
-    exitCurses( true );
-    exit_ghci();
+  exitSheet();
+  exitCurses( true );
+  exit_ghci();
 
-    dump_txt( "shutdown\n" );
+  dump_txt( "shutdown\n" );
 
-    exit_debug();
+  exit_debug();
 
-    return 0;
+  return 0;
 }
