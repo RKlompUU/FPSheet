@@ -39,13 +39,9 @@ class (MonadState s m, Var v, Expr e v rm, Cell c e v rm) => Spreadsheet s c e v
 -- | The 'Cell' API interface supplies cell manipulation functions.
 class (MonadReader (Map v e) m, Var v, Expr e v m) => Cell c e v m | c -> e, c -> v, v -> m, e -> m where
   -- | 'evalCell' tries to evaluate the expression that it contains.
-  -- Prior to calling this, the cell's textual contents need to have been
-  -- parsed using the 'parseCell' function. This is run under a MonadReader
-  -- environment, where values of required global variables should be
-  -- available to read.
+  -- This is run under a MonadReader environment, where values of required
+  -- global variables should be available to read.
   evalCell :: c -> m c
-  -- | 'parseCell' Tries to parse the textual contents of 'Cell' c.
-  parseCell :: c -> c
   -- | 'getEval' returns the evaluation that has been determined during
   -- a prior call to 'evalCell' if it resulted in an evaluation. Otherwise
   -- 'getEval' returns 'Nothing'.

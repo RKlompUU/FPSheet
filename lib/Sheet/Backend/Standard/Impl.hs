@@ -5,12 +5,12 @@ Stability   : experimental
 -}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts,
              ScopedTypeVariables #-}
-module Sheet.Backend.SheetImpl
-      ( module Sheet.Backend.SheetImpl
-      , module Sheet.Backend.Types
-      ) where
+module Sheet.Backend.Standard.Impl (
+  module Sheet.Backend.Standard.Impl,
+  module Sheet.Backend.Standard.Types,
+  Sheet.Backend.SheetAbstr.Pos
+) where
 
-import Sheet.Backend.Types
 
 import Data.Maybe
 
@@ -21,6 +21,9 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import Sheet.Backend.SheetAbstr
+import Sheet.Backend.Standard.Types
+
+import qualified Language.Haskell.Interpreter as I
 
 import Debug.Trace
 
@@ -75,8 +78,6 @@ instance Cell (CellT (ExprT VarT)) (ExprT VarT) VarT (Reader (Env VarT (ExprT Va
     case maybeE of
       Just e  -> (\e' -> c {cExpr = Just e'}) <$> evalExpr e
       Nothing -> return c
-  parseCell c@CellT {cStr = code} =
-    c {cExpr = parseExpr code}
   getEval = cExpr
   getText = cStr
 
@@ -89,10 +90,6 @@ instance Expr (ExprT VarT) VarT (Reader (Env VarT (ExprT VarT))) where
     return e -- (fromIdInt $ nf $ toIdInt $ addCellRefs (M.assocs env) e)
   refsInExpr e =
     [] -- TODO
-
-parseExpr :: String -> Maybe (ExprT VarT)
-parseExpr str =
-  Nothing -- TODO
 
 
 

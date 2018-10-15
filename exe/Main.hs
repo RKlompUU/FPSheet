@@ -1,6 +1,6 @@
 module Main where
 
-import Sheet.Backend.API
+import Sheet.Backend.Standard
 import Sheet.Frontend.Types
 
 main :: IO ()

@@ -3,7 +3,7 @@ Module      : Sheet.Backend.Types
 Description : A Sheet datatype, that contains a grid of cells
 Stability   : experimental
 -}
-module Sheet.Backend.Types where
+module Sheet.Backend.Standard.Types where
 
 import Data.Map (Map)
 import Data.Set (Set)
