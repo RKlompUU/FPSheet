@@ -18,8 +18,8 @@ import Control.Monad
 import Control.Concurrent.STM
 import Control.Monad.Reader
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import qualified Data.Map as M
+import qualified Data.Set as S
 
 import Sheet.Backend.SheetAbstr
 
@@ -27,18 +27,16 @@ import Debug.Trace
 
 import Lambda.Lambda
 
-type CellCntTy = String
-
-instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State (Sheet CellCntTy)) (Reader (Map.Map String CellCntTy)) where
+instance Spreadsheet (Sheet StringCell) (CellT StringCell) StringCell String (State (Sheet StringCell)) (Reader (M.Map String StringCell)) where
   updateEvals = do
-              s <- get
-              mapM_ updateEval ((Map.toList s))
+    s <- get
+    mapM_ updateEval ((M.toList s))
   getCell p = do
-            s <- get
-            return (Map.lookup p s)
+    s <- get
+    return (M.lookup p s)
   setCell p c = do
-              s <- get
-              put (Map.insert p c s)
+    s <- get
+    put (M.insert p c s)
 
 -- | A naive way of fully (re)evaluating the cell expressions. If an
 -- evaluation differs from the prior evaluation, the entire sheet will again
@@ -46,12 +44,12 @@ instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State
 -- the prior evaluation.
 updateEval
   :: (Show v1, Cell (CellT t) (LC v1) v m,
-      Spreadsheet s (CellT CellCntTy) CellCntTy String m1 (Reader (Map.Map String (LC String)))) =>
+      Spreadsheet s (CellT StringCell) StringCell String m1 (Reader (M.Map String (LC String)))) =>
      (Pos, CellT t) -> m1 ()
 updateEval (p, c) =
   do
     let freshParse = parseCell c
-    s <- trace ("Updateting: " ++ show p) get
+    s <- trace ("Updating: " ++ show p) get
     mC <- getCell p
     let refs = case (getEval freshParse) of
                 Just e  -> trace ("Scanning refs in: " ++ show e) scanCellRefs e
@@ -60,10 +58,10 @@ updateEval (p, c) =
           <$> map preCat
           <$> zip refs
           <$> trace ("Found refs; " ++ show refs) mapM getCell refs
-    let refEs = map (\(p,c :: CellT CellCntTy) -> (p,getEval c)) refCs
+    let refEs = map (\(p,c :: CellT StringCell) -> (p,getEval c)) refCs
     let mC' = mC >>= \c -> return $ parseCell c
         globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (cRefPos2Var p, e)) refEs
-        mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ runReader (evalCell c') (Map.fromList globVars)
+        mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ runReader (evalCell c') (M.fromList globVars)
         oldEval = mC >>= \c -> getEval c
         newEval = mC'' >>= \c'' -> getEval c''
     if (oldEval == newEval)
@@ -76,20 +74,17 @@ updateEval (p, c) =
         preCat (p,Nothing) = Nothing
 
 
-instance Cell (CellT CellCntTy) CellCntTy String (Reader (Env String CellCntTy)) where
+instance Cell (CellT StringCell) StringCell String (Reader (Env String StringCell)) where
   evalCell c@CellT {lExpr = maybeE} =
     do
       env <- ask
       case maybeE of
         Just e  -> (\e' -> c {lExpr = Just e'}) <$> evalExpr e
         Nothing -> return c
-  parseCell c@CellT {Spreadsheet.SheetType.text = code} =
+  parseCell c@CellT {str = code} =
     c {lExpr = parseExpr code}
   getEval = lExpr
-  getText = Spreadsheet.SheetType.text
-
-readonly :: UI.Attr UI.Element Bool
-readonly = UI.fromJQueryProp "readonly" (== JSON.Bool True) JSON.Bool
+  getText = str
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
 -- Otherwise, it returns the offset of the position towards the box.
@@ -111,11 +106,11 @@ isInBox (r,c) ((rL, cL), (rH, cH))
 
 -- | 'grabUpdatedCells' filters out all cells that have not changed.
 grabUpdatedCells :: (Var v, Expr e v (Reader (Env v e))) => Sheet e -> Sheet e
-grabUpdatedCells = Map.filter uFlag
+grabUpdatedCells = M.filter uFlag
 
 -- | 'resetUpdateFields' removes the update flags of all cells.
 resetUpdateFields :: (Var v, Expr e v (Reader (Env v e))) => Sheet e -> Sheet e
-resetUpdateFields = Map.map (\c -> c {uFlag = False})
+resetUpdateFields = M.map (\c -> c {uFlag = False})
 
 -- | Subtraction on 'Pos' variables.
 posSubtr :: Pos -> Pos -> Pos
@@ -137,12 +132,12 @@ subLists i xs = let is = [0,i..(length xs - 1)]
                 in map (\i' -> sliceList i' (i'+i-1) xs) is
 
 initSheet :: (Var v, Expr e v (Reader (Env v e))) => Sheet e
-initSheet = Map.empty
+initSheet = M.empty
 
 -- | Helper function to conveniently obtain a 'CellT e' from the 'Sheet e'.
 getSheetCell :: (Var v, Expr e v (Reader (Env v e))) => Pos -> Sheet e -> CellT e
 getSheetCell pos cs
-  = Map.findWithDefault emptyCell pos cs
+  = M.findWithDefault emptyCell pos cs
 
 emptyCell :: (Var v, Expr e v (Reader (Env v e))) => CellT e
 emptyCell = CellT "" Nothing False

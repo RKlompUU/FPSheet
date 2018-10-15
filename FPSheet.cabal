@@ -30,6 +30,7 @@ library
       Paths_FPSheet
       Sheet.Backend.SheetAbstr
       Sheet.Backend.SheetImpl
+      Sheet.Backend.Types
   hs-source-dirs:
       lib
   build-depends:
