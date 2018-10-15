@@ -1,4 +1,4 @@
-# FPSheet
+# FPSheet - the prototype, written in C
 ## A Spreadsheet program with Haskell as the scripting language
 
 ![Alt text](imgs/example.png?raw=true "Example")
@@ -33,7 +33,7 @@ Pressing "v" in navigation mode changes the mode to visual mode. Underlining of 
 
 ### TODOs
 
-- Rewrite in Haskell  (work in progress, see the HaskellRewrite branch for its current state)
+- Rewrite in Haskell  (work in progress, see the master branch for its current state)
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Reading and writing of user defined save files (i.e. any filename, not just ".sheet").
 - Exporting to and importing from excell savefiles
