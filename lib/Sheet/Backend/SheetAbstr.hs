@@ -61,9 +61,11 @@ class (MonadReader (Map v e) m, Var v) => Expr e v m | e -> v, v -> m, e -> m wh
   -- environment, where values of required global variables should be
   -- available to read.
   evalExpr :: e -> m e
+  refsInExpr :: e -> [Pos]
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
 -- API should be extended with functions once some kind of annotated text
 -- mechanism has been added.
 class Var v where
+  posToRef :: Pos -> v

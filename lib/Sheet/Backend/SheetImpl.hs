@@ -37,20 +37,26 @@ instance Spreadsheet (Sheet (ExprT VarT)) (CellT (ExprT VarT)) (ExprT VarT) VarT
     s <- get
     put (M.insert p c s)
 
+-}
+
+
 -- | A naive way of fully (re)evaluating the cell expressions. If an
 -- evaluation differs from the prior evaluation, the entire sheet will again
 -- be evaluated. This is repeated until none of the evaluations differ from
 -- the prior evaluation.
-updateEval
-  :: (Show v1, Cell (CellT t) (ExprT v1) v m,
-      Spreadsheet s (CellT t) (ExprT VarT) String m1 (Reader (M.Map String (ExprT VarT)))) =>
-     (Pos, CellT t) -> m1 ()
+{- updateEval
+  :: (Show v, Cell (CellT (t v)) (ExprT v) v m,
+      Spreadsheet s (CellT (t v)) (ExprT v) v m1 (Reader (M.Map v (t v)))) =>
+     (Pos, CellT (t v)) -> m1 () -}
+updateEval :: (Cell (CellT (ExprT VarT)) (ExprT VarT) VarT m,
+               Spreadsheet s (CellT (ExprT VarT)) (ExprT VarT) VarT m1 (Reader (M.Map VarT (ExprT VarT)))) =>
+              (Pos, CellT (ExprT VarT)) -> m1 ()
 updateEval (p, c) = do
   let freshParse = parseCell c
   s <- trace ("Updating: " ++ show p) get
   mC <- getCell p
   let refs = case (getEval freshParse) of
-              Just e  -> trace ("Scanning refs in: " ++ show e) undefined -- scanCellRefs e
+              Just e  -> trace ("Scanning refs in: " ++ show e) (refsInExpr e)
               Nothing -> trace "No evaluation" []
   refCs <- catMaybes
         <$> map preCat
@@ -58,7 +64,7 @@ updateEval (p, c) = do
         <$> trace ("Found refs; " ++ show refs) mapM getCell refs
   let refEs = map (\(p,c :: CellT (ExprT VarT)) -> (p,getEval c)) refCs
   let mC' = mC >>= \c -> return $ parseCell c
-      globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (cRefPos2Var p, e)) refEs
+      globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (posToRef p, e)) refEs
       mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ runReader (evalCell c') (M.fromList globVars)
       oldEval = mC >>= \c -> getEval c
       newEval = mC'' >>= \c'' -> getEval c''
@@ -70,8 +76,6 @@ updateEval (p, c) = do
          in setCell p c'' >> updateEvals
   where preCat (p,Just j) = Just (p, j)
         preCat (p,Nothing) = Nothing
-
--}
 
 instance Cell (CellT (ExprT VarT)) (ExprT VarT) VarT (Reader (Env VarT (ExprT VarT))) where
   evalCell c@CellT {cExpr = maybeE} = do
@@ -85,11 +89,14 @@ instance Cell (CellT (ExprT VarT)) (ExprT VarT) VarT (Reader (Env VarT (ExprT Va
   getText = cStr
 
 instance Var VarT where
-
+  posToRef (c,r) =
+    "(" ++ show c ++ "," ++ show r ++ ")"
 instance Expr (ExprT VarT) VarT (Reader (Env VarT (ExprT VarT))) where
   evalExpr e = do
     env <- ask
     return e -- (fromIdInt $ nf $ toIdInt $ addCellRefs (M.assocs env) e)
+  refsInExpr e =
+    [] -- TODO
 
 parseExpr :: String -> Maybe (ExprT VarT)
 parseExpr str =

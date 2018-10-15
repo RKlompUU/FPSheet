@@ -24,6 +24,6 @@ data ExprT v =
   ExprT {
     parsedExpr :: String,
     evaluatedExpr :: String
-  }
+  } deriving (Show, Eq)
 
 type VarT = String
