@@ -29,6 +29,7 @@ library
   other-modules:
       Paths_FPSheet
       Sheet.Backend.SheetAbstr
+      Sheet.Backend.SheetImpl
   hs-source-dirs:
       lib
   build-depends:

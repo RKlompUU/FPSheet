@@ -5,13 +5,12 @@ Stability   : experimental
 -}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses, FlexibleContexts,
              ScopedTypeVariables #-}
-module Spreadsheet.Sheet
-      ( module Spreadsheet.Sheet
-      , module Spreadsheet.SheetType
-      , module Lambda.Lambda
+module Sheet.Backend.SheetImpl
+      ( module Sheet.Backend.SheetImpl
+      , module Sheet.Backend.Types
       ) where
 
-import Spreadsheet.SheetType
+import Sheet.Backend.Types
 
 import Data.Maybe
 
@@ -19,20 +18,16 @@ import Control.Monad
 import Control.Concurrent.STM
 import Control.Monad.Reader
 
-import qualified Graphics.UI.Threepenny.Core as UI
-import qualified Graphics.UI.Threepenny as UI
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import qualified Data.Aeson                  as JSON
-
-import API.SheetAbstr
+import Sheet.Backend.SheetAbstr
 
 import Debug.Trace
 
 import Lambda.Lambda
 
-type CellCntTy = LC String
+type CellCntTy = String
 
 instance Spreadsheet (Sheet CellCntTy) (CellT CellCntTy) CellCntTy String (State (Sheet CellCntTy)) (Reader (Map.Map String CellCntTy)) where
   updateEvals = do
