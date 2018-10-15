@@ -25,7 +25,6 @@ import Sheet.Backend.SheetAbstr
 
 import Debug.Trace
 
-{-
 instance Spreadsheet (Sheet (ExprT VarT)) (CellT (ExprT VarT)) (ExprT VarT) VarT (State (Sheet (ExprT VarT))) (Reader (M.Map String (ExprT VarT))) where
   updateEvals = do
     s <- get
@@ -37,17 +36,11 @@ instance Spreadsheet (Sheet (ExprT VarT)) (CellT (ExprT VarT)) (ExprT VarT) VarT
     s <- get
     put (M.insert p c s)
 
--}
-
 
 -- | A naive way of fully (re)evaluating the cell expressions. If an
 -- evaluation differs from the prior evaluation, the entire sheet will again
 -- be evaluated. This is repeated until none of the evaluations differ from
 -- the prior evaluation.
-{- updateEval
-  :: (Show v, Cell (CellT (t v)) (ExprT v) v m,
-      Spreadsheet s (CellT (t v)) (ExprT v) v m1 (Reader (M.Map v (t v)))) =>
-     (Pos, CellT (t v)) -> m1 () -}
 updateEval :: (Cell (CellT (ExprT VarT)) (ExprT VarT) VarT m,
                Spreadsheet s (CellT (ExprT VarT)) (ExprT VarT) VarT m1 (Reader (M.Map VarT (ExprT VarT)))) =>
               (Pos, CellT (ExprT VarT)) -> m1 ()
