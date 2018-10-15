@@ -8,7 +8,6 @@ Stability   : experimental
 module Sheet.Backend.Standard.Impl (
   module Sheet.Backend.Standard.Impl,
   module Sheet.Backend.Standard.Types,
-  Sheet.Backend.SheetAbstr.Pos
 ) where
 
 
@@ -27,10 +26,16 @@ import qualified Language.Haskell.Interpreter as I
 
 import Debug.Trace
 
-instance Spreadsheet (Sheet (ExprT VarT)) (CellT (ExprT VarT)) (ExprT VarT) VarT (State (Sheet (ExprT VarT))) (Reader (M.Map String (ExprT VarT))) where
+
+type V = VarT
+type E = ExprT V
+type C = CellT E
+type S = Sheet C
+
+instance Spreadsheet S C E V (StateT S IO) (StateT (M.Map V E) IO) where
   updateEvals = do
     s <- get
-    mapM_ updateEval (M.toList s)
+    undefined -- mapM_ updateEval (M.toList s)
   getCell p = do
     s <- get
     return (M.lookup p s)
@@ -38,16 +43,17 @@ instance Spreadsheet (Sheet (ExprT VarT)) (CellT (ExprT VarT)) (ExprT VarT) VarT
     s <- get
     put (M.insert p c s)
 
+{-
 
 -- | A naive way of fully (re)evaluating the cell expressions. If an
 -- evaluation differs from the prior evaluation, the entire sheet will again
 -- be evaluated. This is repeated until none of the evaluations differ from
 -- the prior evaluation.
-updateEval :: (Cell (CellT (ExprT VarT)) (ExprT VarT) VarT m,
-               Spreadsheet s (CellT (ExprT VarT)) (ExprT VarT) VarT m1 (Reader (M.Map VarT (ExprT VarT)))) =>
-              (Pos, CellT (ExprT VarT)) -> m1 ()
+updateEval :: (Cell C E V mInner,
+               Spreadsheet s C E V m mInner) =>
+              (Pos, C) -> m ()
 updateEval (p, c) = do
-  let freshParse = parseCell c
+  let freshParse = c -- parseCell c
   s <- trace ("Updating: " ++ show p) get
   mC <- getCell p
   let refs = case (getEval freshParse) of
@@ -58,7 +64,7 @@ updateEval (p, c) = do
         <$> zip refs
         <$> trace ("Found refs; " ++ show refs) mapM getCell refs
   let refEs = map (\(p,c :: CellT (ExprT VarT)) -> (p,getEval c)) refCs
-  let mC' = mC >>= \c -> return $ parseCell c
+  let mC' = mC >>= \c -> return $ c -- parseCell c
       globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (posToRef p, e)) refEs
       mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ runReader (evalCell c') (M.fromList globVars)
       oldEval = mC >>= \c -> getEval c
@@ -71,22 +77,23 @@ updateEval (p, c) = do
          in setCell p c'' >> updateEvals
   where preCat (p,Just j) = Just (p, j)
         preCat (p,Nothing) = Nothing
+-}
 
-instance Cell (CellT (ExprT VarT)) (ExprT VarT) VarT (Reader (Env VarT (ExprT VarT))) where
-  evalCell c@CellT {cExpr = maybeE} = do
-    env <- ask
-    case maybeE of
-      Just e  -> (\e' -> c {cExpr = Just e'}) <$> evalExpr e
-      Nothing -> return c
+instance Cell C E V (StateT (Env V E) IO) where
+  evalCell c = do
+    res <- I.runInterpreter $ I.setImports ["Prelude"] >> I.eval (cStr c)
+    case res of
+      Left _ -> return $ c {cExpr = Nothing}
+      Right value -> return $ c {cExpr = Just (ExprT value)}
   getEval = cExpr
   getText = cStr
 
-instance Var VarT where
+instance Var V where
   posToRef (c,r) =
     "(" ++ show c ++ "," ++ show r ++ ")"
-instance Expr (ExprT VarT) VarT (Reader (Env VarT (ExprT VarT))) where
+instance Expr E V (StateT (Env V E) IO) where
   evalExpr e = do
-    env <- ask
+    --env <- ask
     return e -- (fromIdInt $ nf $ toIdInt $ addCellRefs (M.assocs env) e)
   refsInExpr e =
     [] -- TODO
@@ -113,11 +120,11 @@ isInBox (r,c) ((rL, cL), (rH, cH)) =
       else Just (rOffset,cOffset)
 
 -- | 'grabUpdatedCells' filters out all cells that have not changed.
-grabUpdatedCells :: (Var v, Expr e v (Reader (Env v e))) => Sheet e -> Sheet e
+grabUpdatedCells :: S -> S
 grabUpdatedCells = M.filter cUFlag
 
 -- | 'resetUpdateFields' removes the update flags of all cells.
-resetUpdateFields :: (Var v, Expr e v (Reader (Env v e))) => Sheet e -> Sheet e
+resetUpdateFields :: S -> S
 resetUpdateFields = M.map (\c -> c {cUFlag = False})
 
 -- | Subtraction on 'Pos' variables.
@@ -141,13 +148,13 @@ subLists i xs =
   let is = [0,i..(length xs - 1)]
   in map (\i' -> sliceList i' (i'+i-1) xs) is
 
-initSheet :: (Var v, Expr e v (Reader (Env v e))) => Sheet e
+initSheet :: S
 initSheet = M.empty
 
 -- | Helper function to conveniently obtain a 'CellT e' from the 'Sheet e'.
-getSheetCell :: (Var v, Expr e v (Reader (Env v e))) => Pos -> Sheet e -> CellT e
+getSheetCell :: Pos -> S -> C
 getSheetCell pos cs =
   M.findWithDefault emptyCell pos cs
 
-emptyCell :: (Var v, Expr e v (Reader (Env v e))) => CellT e
+emptyCell :: C
 emptyCell = CellT "" Nothing False

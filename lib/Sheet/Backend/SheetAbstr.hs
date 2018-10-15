@@ -27,7 +27,7 @@ type Env v e = Map v e
 
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (MonadState s m, Var v, Expr e v rm, Cell c e v rm) => Spreadsheet s c e v m rm | s -> c, s -> v, s -> e, s -> m where
+class (MonadState s m, Var v, Expr e v mInner, Cell c e v mInner) => Spreadsheet s c e v m mInner | s -> c, s -> v, s -> e, s -> m where
   -- | 'updateEvals' performs a full update (it evaluates each cell).
   updateEvals :: m ()
   -- | 'getCell' retrieves a cell from the spreadsheet.
@@ -37,7 +37,7 @@ class (MonadState s m, Var v, Expr e v rm, Cell c e v rm) => Spreadsheet s c e v
   setCell :: Pos -> c -> m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
-class (MonadReader (Map v e) m, Var v, Expr e v m) => Cell c e v m | c -> e, c -> v, v -> m, e -> m where
+class (MonadState (Map v e) m, Var v, Expr e v m) => Cell c e v m | c -> e, c -> v, v -> m, e -> m where
   -- | 'evalCell' tries to evaluate the expression that it contains.
   -- This is run under a MonadReader environment, where values of required
   -- global variables should be available to read.
@@ -52,7 +52,7 @@ class (MonadReader (Map v e) m, Var v, Expr e v m) => Cell c e v m | c -> e, c -
 
 
 -- | The 'Expr' API interface supplies expression manipulation functions.
-class (MonadReader (Map v e) m, Var v) => Expr e v m | e -> v, v -> m, e -> m where
+class (MonadState (Map v e) m, Var v) => Expr e v m | e -> v, v -> m, e -> m where
   -- | 'evalExpr' evaluates the expression. This function is run under a MonadReader
   -- environment, where values of required global variables should be
   -- available to read.

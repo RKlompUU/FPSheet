@@ -1,7 +1,7 @@
 module Sheet.Backend.Standard (
   module Sheet.Backend.Standard.Impl,
   module Sheet.Backend.Standard.Types,
-  Sheet.Backend.SheetAbstr.Pos
+  module Sheet.Backend.SheetAbstr
 ) where
 
 import Sheet.Backend.SheetAbstr

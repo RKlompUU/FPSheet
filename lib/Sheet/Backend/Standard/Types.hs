@@ -16,13 +16,12 @@ data CellT e =
   CellT { cStr   :: String -- |User defined cell's text
         , cExpr  :: Maybe (e) -- |The result from parsing (and executing?) str
         , cUFlag :: Bool -- |Cell has changed, used to check if an input field needs to be refreshed by the frontend
-  }
+  } deriving (Show)
 
-type Sheet e = Map Pos (CellT e)
+type Sheet c = Map Pos c
 
 data ExprT v =
   ExprT {
-    parsedExpr :: String,
     evaluatedExpr :: String
   } deriving (Show, Eq)
 
