@@ -15,7 +15,6 @@ import Sheet.Backend.Types
 import Data.Maybe
 
 import Control.Monad
--- import Control.Concurrent.STM
 import Control.Monad.Reader
 
 import qualified Data.Map as M
@@ -28,7 +27,7 @@ import Debug.Trace
 instance Spreadsheet (Sheet (ExprT VarT)) (CellT (ExprT VarT)) (ExprT VarT) VarT (State (Sheet (ExprT VarT))) (Reader (M.Map String (ExprT VarT))) where
   updateEvals = do
     s <- get
-    mapM_ updateEval ((M.toList s))
+    mapM_ updateEval (M.toList s)
   getCell p = do
     s <- get
     return (M.lookup p s)
@@ -155,15 +154,3 @@ getSheetCell pos cs =
 
 emptyCell :: (Var v, Expr e v (Reader (Env v e))) => CellT e
 emptyCell = CellT "" Nothing False
-
-
-{-
--- | 'scanCellRefs' obtains all references that are present in an
--- expression. This is for example used to find out which global variables
--- need to be added to an expression prior to evaluating it.
-scanCellRefs :: LC v -> [Pos]
-scanCellRefs (CVar p)    = [p]
-scanCellRefs (Lam _ e)   = scanCellRefs e
-scanCellRefs (App e1 e2) = scanCellRefs e1 ++ scanCellRefs e2
-scanCellRefs _ = []
--}
