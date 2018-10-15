@@ -4,8 +4,11 @@ import Sheet.Backend.API
 import Sheet.Frontend.Types
 
 main :: IO ()
-main =
-  putStrLn "This executable is not doing anything just yet!"
+main = do
+  sh <- initUISheet
+  let p = (0,121120)
+  let c = getText <$> evalState (setCell p (CellT "Test string" Nothing False) >> getCell p) (sheetCells sh)
+  putStrLn (show c)
 
 initUISheet :: IO UISheet
 initUISheet = do
