@@ -13,7 +13,7 @@ import Control.Monad.Reader
 
 import Data.Functor.Identity
 
-import Data.Map
+import Data.Map.Lazy
 
 -- | Each Cell is positioned on a 2-dimensional grid. Its position is
 -- defined by the ith row and jth column, where i and j are \"(i, j) :: 'Pos'\"

@@ -17,7 +17,6 @@ license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 extra-source-files:
-    ChangeLog.md
     README.md
 
 source-repository head
@@ -26,13 +25,16 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Sheet.Backend.API
   other-modules:
       Paths_FPSheet
+      Sheet.Backend.SheetAbstr
   hs-source-dirs:
-      src
+      lib
   build-depends:
-      base >=4.7 && <5
+      base >=4.7 && <5,
+      mtl,
+      containers
   default-language: Haskell2010
 
 executable FPSheet-exe
@@ -40,20 +42,7 @@ executable FPSheet-exe
   other-modules:
       Paths_FPSheet
   hs-source-dirs:
-      app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      FPSheet
-    , base >=4.7 && <5
-  default-language: Haskell2010
-
-test-suite FPSheet-test
-  type: exitcode-stdio-1.0
-  main-is: Spec.hs
-  other-modules:
-      Paths_FPSheet
-  hs-source-dirs:
-      test
+      exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       FPSheet
