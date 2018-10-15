@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes,
              ConstraintKinds, FlexibleContexts #-}
-module API.SheetAbstr
-  ( module API.SheetAbstr
+module Sheet.Backend.SheetAbstr
+  ( module Sheet.Backend.SheetAbstr
   , module Control.Monad
   , module Control.Monad.State
   , module Data.Functor.Identity
@@ -67,5 +67,3 @@ class (MonadReader (Map v e) m, Var v) => Expr e v m | e -> v, v -> m, e -> m wh
 -- API should be extended with functions once some kind of annotated text
 -- mechanism has been added.
 class Var v where
-
-
