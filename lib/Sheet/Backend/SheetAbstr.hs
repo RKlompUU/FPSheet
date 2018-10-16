@@ -15,20 +15,14 @@ import Data.Functor.Identity
 
 import Data.Map.Lazy
 
--- | Each Cell is positioned on a 2-dimensional grid. Its position is
--- defined by the ith row and jth column, where i and j are \"(i, j) :: 'Pos'\"
-type Pos = (Int,Int)
-
-type Env v e = Map v e
-
 
 -- Annotated text (with for example explicit information about cells that are referred to)
 --class AnnText t where
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (MonadState s m, Var v pos, Expr s m e v pos, Cell s m  c e v pos) => Spreadsheet s m c e v pos | s -> c, s -> v, s -> e, s -> m where
-  -- | 'updateEvals' performs a full update (it evaluates each cell).
-  updateEvals :: m ()
+class (MonadState s m, Var v pos, Expr s m e v pos, Cell s m  c e var val pos) => Spreadsheet s m c e v pos | s -> c, s -> v, s -> e, s -> m where
+  -- | 'getSetCells' returns the list of thus far set cells
+  getSetCells :: m [c]
   -- | 'getCell' retrieves a cell from the spreadsheet.
   getCell :: pos -> m c
   -- | 'setCell' sets a 'Cell' c at 'Pos' in the spreadsheet.
@@ -36,27 +30,28 @@ class (MonadState s m, Var v pos, Expr s m e v pos, Cell s m  c e v pos) => Spre
   setCell :: pos -> c -> m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
-class (MonadState s m, Var v pos, Expr m e v pos) => Cell s m  c e v pos | c -> e, c -> v, v -> m, e -> m where
+class (MonadState s m, Var var pos, Expr m e var val pos) => Cell s m  c e var val pos | c -> e, c -> v, v -> m, e -> m where
   -- | 'evalCell' tries to evaluate the cell's content, in the context of the current spreadsheet's state.
-  -- This is run in the state monad. 'evalCell' should change the evaluated cell in the spreadsheet state,
-  -- additionally (for a possible convenience) 'evalCell' returns the modified cell.
-  evalCell :: c -> m c
+  -- This is run in the state monad. 'evalCell' must change the evaluated cell in the spreadsheet state. Possibly,
+  -- depending on the implementation choices made, it additionally re-evaluates those cells that are depending on a
+  -- currently evaluated cell.
+  evalCell :: c -> m ()
   -- | 'getEval' returns the evaluation that has been determined during
   -- a prior call to 'evalCell' if it resulted in an evaluation. Otherwise
   -- 'getEval' returns 'Nothing'.
   getEval :: c -> Maybe e
-  -- | 'getText' returns the textual contents of a 'Cell'.
+  -- | 'getText' returns the text contents of a 'Cell'.
   getText :: c -> String
-  -- | 'newCell' returns an empty cell
-  newCell :: c
+  -- | 'getCellPos' returns the position on the sheet of the cell
+  getCellPos :: c -> pos
+  -- | 'newCell' returns a new cell (probably an empty cell, but this is a choice left for the implementation).
+  newCell :: pos -> c
 
 -- | The 'Expr' API interface supplies expression manipulation functions.
-class (MonadState s m, Var v pos) => Expr s m  e v pos | e -> v, v -> m, e -> m where
-  -- | 'evalExpr' evaluates the expression. This function is run under a MonadReader
-  -- environment, where values of required global variables should be
-  -- available to read.
-  evalExpr :: e -> m e
-  refsInExpr :: e -> [Pos]
+class (MonadState s m, Var var pos) => Expr s m  e var val pos | e -> v, v -> m, e -> m where
+  -- | 'evalExpr' evaluates the expression.
+  evalExpr :: e -> Either String Val
+  refsInExpr :: e -> [pos]
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
