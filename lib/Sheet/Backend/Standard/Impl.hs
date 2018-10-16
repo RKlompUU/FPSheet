@@ -27,78 +27,51 @@ import qualified Language.Haskell.Interpreter as I
 import Debug.Trace
 
 
-type V = VarT
+type VAR = VarT
+type VAL = String
 type E = ExprT V
 type C = CellT E
 type S = Sheet C
 
-instance Spreadsheet S C E V (StateT S IO) (StateT (M.Map V E) IO) where
-  updateEvals = do
-    s <- get
-    undefined -- mapM_ updateEval (M.toList s)
+instance Spreadsheet S (StateT S IO) C E VAR VAL Pos where
   getCell p = do
     s <- get
-    return (M.lookup p s)
+    return (maybe (newCell p) id (M.lookup p s))
   setCell p c = do
     s <- get
     put (M.insert p c s)
+  getSetCells = do
+    s <- get
+    return $ M.elems s
 
-{-
-
--- | A naive way of fully (re)evaluating the cell expressions. If an
--- evaluation differs from the prior evaluation, the entire sheet will again
--- be evaluated. This is repeated until none of the evaluations differ from
--- the prior evaluation.
-updateEval :: (Cell C E V mInner,
-               Spreadsheet s C E V m mInner) =>
-              (Pos, C) -> m ()
-updateEval (p, c) = do
-  let freshParse = c -- parseCell c
-  s <- trace ("Updating: " ++ show p) get
-  mC <- getCell p
-  let refs = case (getEval freshParse) of
-              Just e  -> trace ("Scanning refs in: " ++ show e) (refsInExpr e)
-              Nothing -> trace "No evaluation" []
-  refCs <- catMaybes
-        <$> map preCat
-        <$> zip refs
-        <$> trace ("Found refs; " ++ show refs) mapM getCell refs
-  let refEs = map (\(p,c :: CellT (ExprT VarT)) -> (p,getEval c)) refCs
-  let mC' = mC >>= \c -> return $ c -- parseCell c
-      globVars = mapMaybe (\(p,mE) -> mE >>= \e -> trace ("cRefs: " ++ show p) return (posToRef p, e)) refEs
-      mC'' = trace ("test: " ++ show globVars) mC' >>= \c' -> return $ runReader (evalCell c') (M.fromList globVars)
-      oldEval = mC >>= \c -> getEval c
-      newEval = mC'' >>= \c'' -> getEval c''
-  if (oldEval == newEval)
-    then return ()
-    else let c'' = case newEval of
-                     Just e -> trace ("Updating e to: " ++ show e) c {cUFlag = True, cExpr = Just $ e}
-                     Nothing -> c {cUFlag = True, cExpr = Nothing}
-         in setCell p c'' >> updateEvals
-  where preCat (p,Just j) = Just (p, j)
-        preCat (p,Nothing) = Nothing
--}
-
-instance Cell C E V (StateT (Env V E) IO) where
+instance Cell S (StateT S IO) C E VAR VAL Pos where
   evalCell c = do
-    res <- I.runInterpreter $ I.setImports ["Prelude"] >> I.eval (cStr c)
-    case res of
-      Left _ -> return $ c {cExpr = Nothing}
-      Right value -> return $ c {cExpr = Just (ExprT value)}
-  getEval = cExpr
+    if (cUFlag c)
+      then return ()
+      else do
+        let e = getText c
+        val <- evalExpr e
+        newRes <- case val of
+                    Left err -> Nothing
+                    Right res -> Just res
+        setCell (getCellPos c) (c { cRes = newRes, cUFlag = True })
+        mapM (\p -> getCell p >>= evalCell) (refsInExpr e)
+  getEval = cRes
   getText = cStr
+  getCellPos = cPos
+  newCell p = CellT "" Nothing False p
 
-instance Var V where
+instance Var VAR VAL Pos where
   posToRef (c,r) =
     "(" ++ show c ++ "," ++ show r ++ ")"
-instance Expr E V (StateT (Env V E) IO) where
-  evalExpr e = do
-    --env <- ask
-    return e -- (fromIdInt $ nf $ toIdInt $ addCellRefs (M.assocs env) e)
+instance Expr S (StateT S IO) E VAR VAL Pos where
+  evalExpr eStr = do
+    res <- I.runInterpreter $ I.setImports ["Prelude"] >> I.eval (cStr c)
+    case res of
+      Left _ -> return $ Left "Failed to evaluate expression: " ++ eStr
+      Right res' -> return $ Right res'
   refsInExpr e =
     [] -- TODO
-
-
 
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
@@ -155,6 +128,3 @@ initSheet = M.empty
 getSheetCell :: Pos -> S -> C
 getSheetCell pos cs =
   M.findWithDefault emptyCell pos cs
-
-emptyCell :: C
-emptyCell = CellT "" Nothing False
