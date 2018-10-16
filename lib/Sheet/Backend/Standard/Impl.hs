@@ -76,8 +76,65 @@ instance Expr S (StateT S IO) E VAR VAL Pos where
       P.ParseFailed _ _ -> [] -- No refs
       P.ParseOk p ->
         let constrs = grabDataConstructors p
-        in []
-        where grabDataConstructors d = undefined -- TODO   http://hackage.haskell.org/package/haskell-src-exts-1.20.3/docs/Language-Haskell-Exts-Syntax.html#t:Exp
+        in [] -- error $ show p
+
+cnstrsInStmnt :: Stmnt l -> [(String,Pos)]
+cnstrsInStmnt (Generator _ _ e) = cnstrs e
+cnstrsInStmnt (Qualifier _ e) = cnstrs e
+cnstrsInStmnt _ = []
+
+cnstrs :: Exp l -> [(String, Pos)]
+cnstrs c@(Con l (QName l2)) = [undefined]
+cnstrs (InfixApp _ e1 _ e2) = cnstrs e1 ++ cnstrs e2
+cnstrs (App _ e1 e2) = cnstrs e1 ++ cnstrs e2
+cnstrs (NegApp _ e) = cnstrs e
+cnstrs (Lambda _ _ e) = cnstrs e
+cnstrs (Let _ _ e) = cnstrs e
+cnstrs (If _ ifE thenE elseE) = cnstrs ifE ++ cnstrs thenE ++ cnstrs elseE
+cnstrs (MultiIf _ (GuardedRhs _ stmnts e) = concatMap cnstrsInStmnt stmnts ++ cnstrs e
+cnstrs (Case _ e [Alt l]
+Do l [Stmt l]
+MDo l [Stmt l]
+Tuple l Boxed [Exp l]
+UnboxedSum l Int Int (Exp l)
+TupleSection l Boxed [Maybe (Exp l)]
+List l [Exp l]
+ParArray l [Exp l]
+Paren l (Exp l)
+LeftSection l (Exp l) (QOp l)
+RightSection l (QOp l) (Exp l)
+RecConstr l (QName l) [FieldUpdate l]
+RecUpdate l (Exp l) [FieldUpdate l]
+EnumFrom l (Exp l)
+EnumFromTo l (Exp l) (Exp l)
+EnumFromThen l (Exp l) (Exp l)
+EnumFromThenTo l (Exp l) (Exp l) (Exp l)
+ParArrayFromTo l (Exp l) (Exp l)
+ParArrayFromThenTo l (Exp l) (Exp l) (Exp l)
+ListComp l (Exp l) [QualStmt l]
+ParComp l (Exp l) [[QualStmt l]]
+ParArrayComp l (Exp l) [[QualStmt l]]
+ExpTypeSig l (Exp l) (Type l)
+VarQuote l (QName l)
+TypQuote l (QName l)
+BracketExp l (Bracket l)
+SpliceExp l (Splice l)
+QuasiQuote l String String
+TypeApp l (Type l)
+XTag l (XName l) [XAttr l] (Maybe (Exp l)) [Exp l]
+XETag l (XName l) [XAttr l] (Maybe (Exp l))
+XPcdata l String
+XExpTag l (Exp l)
+XChildTag l [Exp l]
+CorePragma l String (Exp l)
+SCCPragma l String (Exp l)
+GenPragma l String (Int, Int) (Int, Int) (Exp l)
+Proc l (Pat l) (Exp l)
+LeftArrApp l (Exp l) (Exp l)
+RightArrApp l (Exp l) (Exp l)
+LeftArrHighApp l (Exp l) (Exp l)
+RightArrHighApp l (Exp l) (Exp l)
+LCase l [Alt l]
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
 -- Otherwise, it returns the offset of the position towards the box.
