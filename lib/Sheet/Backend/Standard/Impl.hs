@@ -23,6 +23,7 @@ import Sheet.Backend.SheetAbstr
 import Sheet.Backend.Standard.Types
 
 import qualified Language.Haskell.Interpreter as I
+import qualified Language.Haskell.Exts.Parser as P
 
 import Debug.Trace
 
@@ -70,9 +71,12 @@ instance Expr S (StateT S IO) E VAR VAL Pos where
     case res of
       Left _ -> return $ Left "Failed to evaluate expression: " ++ eStr
       Right res' -> return $ Right res'
-  refsInExpr e =
-    [] -- TODO
-
+  refsInExpr eStr =
+    case parseExp eStr of
+      ParseFailed _ _ -> [] -- No refs
+      ParseOk p ->
+        let constrs = filter grabDataConstructors p
+        where grabDataConstructors d = undefined -- TODO   http://hackage.haskell.org/package/haskell-src-exts-1.20.3/docs/Language-Haskell-Exts-Syntax.html#t:Exp
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
 -- Otherwise, it returns the offset of the position towards the box.
