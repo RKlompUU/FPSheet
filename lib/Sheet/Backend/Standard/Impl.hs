@@ -30,7 +30,7 @@ import Debug.Trace
 
 type VAR = VarT
 type VAL = String
-type E = ExprT V
+type E = ExprT VAR
 type C = CellT E
 type S = Sheet C
 
@@ -38,9 +38,9 @@ instance Spreadsheet S (StateT S IO) C E VAR VAL Pos where
   getCell p = do
     s <- get
     return (maybe (newCell p) id (M.lookup p s))
-  setCell p c = do
+  setCell c = do
     s <- get
-    put (M.insert p c s)
+    put (M.insert (cPos c) c s)
   getSetCells = do
     s <- get
     return $ M.elems s
@@ -52,30 +52,31 @@ instance Cell S (StateT S IO) C E VAR VAL Pos where
       else do
         let e = getText c
         val <- evalExpr e
-        newRes <- case val of
-                    Left err -> Nothing
-                    Right res -> Just res
-        setCell (getCellPos c) (c { cRes = newRes, cUFlag = True })
-        mapM (\p -> getCell p >>= evalCell) (refsInExpr e)
+        let newRes = case val of
+                      Left err -> Nothing
+                      Right res -> Just res
+        setCell (c { cRes = newRes, cUFlag = True })
+        mapM_ (\p -> getCell p >>= evalCell) (refsInExpr e)
   getEval = cRes
   getText = cStr
   getCellPos = cPos
   newCell p = CellT "" Nothing False p
 
-instance Var VAR VAL Pos where
+instance Var VAR Pos where
   posToRef (c,r) =
     "(" ++ show c ++ "," ++ show r ++ ")"
 instance Expr S (StateT S IO) E VAR VAL Pos where
   evalExpr eStr = do
-    res <- I.runInterpreter $ I.setImports ["Prelude"] >> I.eval (cStr c)
+    res <- I.runInterpreter $ I.setImports ["Prelude"] >> I.eval eStr
     case res of
-      Left _ -> return $ Left "Failed to evaluate expression: " ++ eStr
+      Left _ -> return $ Left ("Failed to evaluate expression: " ++ eStr)
       Right res' -> return $ Right res'
   refsInExpr eStr =
-    case parseExp eStr of
-      ParseFailed _ _ -> [] -- No refs
-      ParseOk p ->
-        let constrs = filter grabDataConstructors p
+    case P.parseExp eStr of
+      P.ParseFailed _ _ -> [] -- No refs
+      P.ParseOk p ->
+        let constrs = grabDataConstructors p
+        in []
         where grabDataConstructors d = undefined -- TODO   http://hackage.haskell.org/package/haskell-src-exts-1.20.3/docs/Language-Haskell-Exts-Syntax.html#t:Exp
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
@@ -127,8 +128,3 @@ subLists i xs =
 
 initSheet :: S
 initSheet = M.empty
-
--- | Helper function to conveniently obtain a 'CellT e' from the 'Sheet e'.
-getSheetCell :: Pos -> S -> C
-getSheetCell pos cs =
-  M.findWithDefault emptyCell pos cs

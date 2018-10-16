@@ -11,15 +11,12 @@ main = do
   c <- evalStateT test initSheet
   putStrLn (show c)
 
-test :: StateT S IO (Maybe C)
+test :: StateT S IO C
 test = do
   let p = (0,121120)
-  setCell p (CellT "5 * 104" Nothing False)
-  c <- getCell p
-  case c of
-    Just c_ -> liftIO $ do
-                Just <$> evalStateT (evalCell c_) M.empty 
-    Nothing -> return Nothing
+  setCell ((newCell p) {cStr = "5 * 104"})
+  getCell p >>= evalCell
+  getCell p
 
 initUISheet :: IO UISheet
 initUISheet = do
