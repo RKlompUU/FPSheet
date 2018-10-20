@@ -24,7 +24,8 @@ data CellT e =
         , cPos   :: Pos
   } deriving (Show)
 
-type Sheet c = Map Pos c
+data Sheet c =
+  Sheet { cells :: Map Pos c }
 
 type ExprT v = String
 

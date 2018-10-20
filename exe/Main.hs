@@ -14,7 +14,7 @@ main = do
 test :: StateT S IO C
 test = do
   let p = (0,121120)
-  setCell ((newCell p) {cStr = "(\\x -> x) $ 5 * 104"})
+  setCell ((newCell p) {cStr = "(\\x -> x + a5 - z103 * aa4 - ab4) $ 5 * 104"})
   getCell p >>= evalCell
   getCell p
 

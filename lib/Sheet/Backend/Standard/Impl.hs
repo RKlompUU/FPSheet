@@ -61,7 +61,8 @@ instance Cell S (StateT S IO) C E VAR VAL Pos where
                       Left err -> Nothing
                       Right res -> Just res
         setCell (c { cRes = newRes, cUFlag = True })
-        mapM_ (\p -> getCell p >>= evalCell) (refsInExpr e)
+        trace (show $ refsInExpr e) return ()
+      --  mapM_ (\p -> getCell p >>= evalCell) (refsInExpr e)
   getEval = cRes
   getText = cStr
   getCellPos = cPos
@@ -107,12 +108,12 @@ posParser =
 -- given a spreadsheet column as a string
 -- returns integer giving the position of the column
 -- ex:
--- toInt "A" = 0
--- toInt "XFD" = 16383
+-- toInt "A" = 1
+-- toInt "XFD" = 16384
 toInt :: String -> Int
 toInt = foldl fn 0
   where
-    fn = \a c -> 26*a + ((ord c)-(ord 'a'))
+    fn = \a c -> 26*a + ((ord c)-(ord 'a' - 1))
 
 pCol :: SParser Int
 pCol =
