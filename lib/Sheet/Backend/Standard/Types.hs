@@ -18,14 +18,15 @@ import Sheet.Backend.SheetAbstr
 type Pos = (Int,Int)
 
 data CellT e =
-  CellT { cStr   :: String -- |User defined cell's text
-        , cRes   :: Maybe e -- |The result of the last evaluation of cStr
-        , cUFlag :: Bool -- |Cell has changed, used to check if an input field needs to be refreshed by the frontend
-        , cPos   :: Pos
+  CellT { c_str   :: String -- |User defined cell's text
+        , c_res   :: Maybe e -- |The result of the last evaluation of cStr
+        , c_uFlag :: Bool -- |Cell has changed, used to check if an input field needs to be refreshed by the frontend
+        , c_pos   :: Pos
   } deriving (Show)
 
 data Sheet c =
-  Sheet { cells :: Map Pos c }
+  Sheet { s_cells :: Map Pos c
+        , s_deps  :: Map Pos [Pos] }
 
 type ExprT v = String
 

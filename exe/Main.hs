@@ -3,18 +3,23 @@ module Main where
 import Sheet.Backend.Standard
 import Sheet.Frontend.Types
 
+import qualified Language.Haskell.Interpreter as I
 import qualified Data.Map as M
 
 main :: IO ()
 main = do
   sh <- initUISheet
-  c <- evalStateT test initSheet
+  c <- I.runInterpreter (I.setImports ["Prelude"] >> evalStateT test initSheet)
   putStrLn (show c)
 
-test :: StateT S IO C
+test :: StateTy C
 test = do
-  let p = (0,121120)
-  setCell ((newCell p) {cStr = "(\\x -> x + a5 - z103 * aa4 - ab4) $ 5 * 104"})
+  let p0 = (1,5)
+  setCell ((newCell p0) {c_str = "5 * 3"})
+  getCell p0 >>= evalCell
+
+  let p = (1,4)
+  setCell ((newCell p) {c_str = "(\\x -> x + a5) $ 5 * 104"})
   getCell p >>= evalCell
   getCell p
 

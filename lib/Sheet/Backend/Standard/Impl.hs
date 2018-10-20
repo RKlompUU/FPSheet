@@ -15,6 +15,7 @@ import qualified ParseLib.Simple as SimpleP
 
 import Data.Maybe
 import Data.Char
+import Data.List
 
 import Control.Monad
 import Control.Monad.Reader
@@ -39,44 +40,52 @@ type E = ExprT VAR
 type C = CellT E
 type S = Sheet C
 
-instance Spreadsheet S (StateT S IO) C E VAR VAL Pos where
+type StateTy = StateT S (I.InterpreterT IO)
+
+instance Spreadsheet S StateTy C E VAR VAL Pos where
   getCell p = do
-    s <- get
-    return (maybe (newCell p) id (M.lookup p s))
+    cells <- s_cells <$> get
+    return (maybe (newCell p) id (M.lookup p cells))
   setCell c = do
     s <- get
-    put (M.insert (cPos c) c s)
+    put $ s {s_cells = M.insert (c_pos c) c (s_cells s)}
   getSetCells = do
-    s <- get
-    return $ M.elems s
+    cells <- s_cells <$> get
+    return $ M.elems cells
 
-instance Cell S (StateT S IO) C E VAR VAL Pos where
+instance Cell S StateTy C E VAR VAL Pos where
   evalCell c = do
-    if (cUFlag c)
+    if (c_uFlag c)
       then return ()
       else do
         let e = getText c
-        val <- evalExpr e
-        let newRes = case val of
-                      Left err -> Nothing
-                      Right res -> Just res
-        setCell (c { cRes = newRes, cUFlag = True })
+
+        lift $ trace (posToRef (c_pos c)) I.runStmt $ "let " ++ posToRef (c_pos c) ++ " = " ++  e
+        res <- lift $ I.eval (posToRef (c_pos c))
+        setCell (c { c_res = Just res, c_uFlag = True })
+
         trace (show $ refsInExpr e) return ()
-      --  mapM_ (\p -> getCell p >>= evalCell) (refsInExpr e)
-  getEval = cRes
-  getText = cStr
-  getCellPos = cPos
+        deps <- getCellDeps (c_pos c)
+        mapM_ (\p -> getCell p >>= evalCell) deps
+  getEval = c_res
+  getText = c_str
+  setText str c = do
+    let oldDeps = S.toList $ refsInExpr (c_str c)
+        newDeps = S.toList $ refsInExpr str
+        expired = oldDeps \\ newDeps
+        appended = newDeps \\ oldDeps
+    mapM_ (delCellDep (c_pos c)) expired
+    mapM_ (addCellDep (c_pos c)) appended
+    setCell (c {c_str = str})
+  getCellPos = c_pos
   newCell p = CellT "" Nothing False p
 
 instance Var VAR Pos where
   posToRef (c,r) =
-    "(" ++ show c ++ "," ++ show r ++ ")"
-instance Expr S (StateT S IO) E VAR VAL Pos where
+    toCol c ++ show r
+instance Expr S StateTy E VAR VAL Pos where
   evalExpr eStr = do
-    res <- I.runInterpreter $ I.setImports ["Prelude"] >> I.eval eStr
-    case res of
-      Left _ -> return $ Left ("Failed to evaluate expression: " ++ eStr)
-      Right res' -> return $ Right res'
+    undefined
   refsInExpr eStr =
     case P.parseExp eStr of
       P.ParseFailed _ _ -> S.empty
@@ -87,6 +96,26 @@ instance Expr S (StateT S IO) E VAR VAL Pos where
           $ S.map fv2Pos fv
         where fv2Pos (P.Ident _ str) = parsePos str
               fv2Pos (P.Symbol _ _) = Nothing
+
+
+addCellDep :: Pos -> Pos -> StateTy ()
+addCellDep p1 p2 = do
+  deps <- getCellDeps p2
+  s <- get
+  put $ s {s_deps = M.insert p2 (nub $ p1:deps) (s_deps s)}
+
+delCellDep :: Pos -> Pos -> StateTy ()
+delCellDep p1 p2 = do
+  deps <- getCellDeps p2
+  s <- get
+  put $ s {s_deps = M.insert p2 (filter (/= p1) deps) (s_deps s)}
+
+
+getCellDeps :: Pos -> StateTy [Pos]
+getCellDeps p = do
+  s <- get
+  return $ maybe [] id (M.lookup p (s_deps s))
+
 
 type SParser a = SimpleP.Parser Char a
 
@@ -115,6 +144,9 @@ toInt = foldl fn 0
   where
     fn = \a c -> 26*a + ((ord c)-(ord 'a' - 1))
 
+toCol :: Int -> String
+toCol c = ([0..] >>= flip replicateM ['a'..'z']) !! c
+
 pCol :: SParser Int
 pCol =
   toInt SimpleP.<$> SimpleP.some (SimpleP.satisfy (\c -> any (== c) ['a'..'z']))
@@ -140,13 +172,9 @@ isInBox (r,c) ((rL, cL), (rH, cH)) =
       then Nothing
       else Just (rOffset,cOffset)
 
--- | 'grabUpdatedCells' filters out all cells that have not changed.
-grabUpdatedCells :: S -> S
-grabUpdatedCells = M.filter cUFlag
-
 -- | 'resetUpdateFields' removes the update flags of all cells.
 resetUpdateFields :: S -> S
-resetUpdateFields = M.map (\c -> c {cUFlag = False})
+resetUpdateFields s = s {s_cells = M.map (\c -> c {c_uFlag = False}) (s_cells s)}
 
 -- | Subtraction on 'Pos' variables.
 posSubtr :: Pos -> Pos -> Pos
@@ -170,4 +198,4 @@ subLists i xs =
   in map (\i' -> sliceList i' (i'+i-1) xs) is
 
 initSheet :: S
-initSheet = M.empty
+initSheet = Sheet M.empty M.empty

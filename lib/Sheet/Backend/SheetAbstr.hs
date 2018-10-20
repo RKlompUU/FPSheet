@@ -37,13 +37,14 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var
   -- This is run in the state monad. 'evalCell' must change the evaluated cell in the spreadsheet state. Possibly,
   -- depending on the implementation choices made, it additionally re-evaluates those cells that are depending on a
   -- currently evaluated cell.
-  evalCell :: c -> m ()
   -- | 'getEval' returns the evaluation that has been determined during
+  evalCell :: c -> m ()
   -- a prior call to 'evalCell' if it resulted in an evaluation. Otherwise
   -- 'getEval' returns 'Nothing'.
   getEval :: c -> Maybe e
   -- | 'getText' returns the text contents of a 'Cell'.
   getText :: c -> String
+  setText :: String -> c -> m ()
   -- | 'getCellPos' returns the position on the sheet of the cell
   getCellPos :: c -> pos
   -- | 'newCell' returns a new cell (probably an empty cell, but this is a choice left for the implementation).
