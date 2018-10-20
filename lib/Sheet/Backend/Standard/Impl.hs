@@ -11,7 +11,10 @@ module Sheet.Backend.Standard.Impl (
 ) where
 
 
+import qualified ParseLib.Simple as SimpleP
+
 import Data.Maybe
+import Data.Char
 
 import Control.Monad
 import Control.Monad.Reader
@@ -24,6 +27,8 @@ import Sheet.Backend.Standard.Types
 
 import qualified Language.Haskell.Interpreter as I
 import qualified Language.Haskell.Exts.Parser as P
+import qualified Language.Haskell.Exts.Syntax as P
+import Language.Haskell.Exts.Util
 
 import Debug.Trace
 
@@ -73,68 +78,48 @@ instance Expr S (StateT S IO) E VAR VAL Pos where
       Right res' -> return $ Right res'
   refsInExpr eStr =
     case P.parseExp eStr of
-      P.ParseFailed _ _ -> [] -- No refs
+      P.ParseFailed _ _ -> S.empty
       P.ParseOk p ->
-        let constrs = grabDataConstructors p
-        in [] -- error $ show p
+        let fv = freeVars p
+        in S.map fromJust
+          $ S.filter isJust
+          $ S.map fv2Pos fv
+        where fv2Pos (P.Ident _ str) = parsePos str
+              fv2Pos (P.Symbol _ _) = Nothing
 
-cnstrsInStmnt :: Stmnt l -> [(String,Pos)]
-cnstrsInStmnt (Generator _ _ e) = cnstrs e
-cnstrsInStmnt (Qualifier _ e) = cnstrs e
-cnstrsInStmnt _ = []
+type SParser a = SimpleP.Parser Char a
 
-cnstrs :: Exp l -> [(String, Pos)]
-cnstrs c@(Con l (QName l2)) = [undefined]
-cnstrs (InfixApp _ e1 _ e2) = cnstrs e1 ++ cnstrs e2
-cnstrs (App _ e1 e2) = cnstrs e1 ++ cnstrs e2
-cnstrs (NegApp _ e) = cnstrs e
-cnstrs (Lambda _ _ e) = cnstrs e
-cnstrs (Let _ _ e) = cnstrs e
-cnstrs (If _ ifE thenE elseE) = cnstrs ifE ++ cnstrs thenE ++ cnstrs elseE
-cnstrs (MultiIf _ (GuardedRhs _ stmnts e) = concatMap cnstrsInStmnt stmnts ++ cnstrs e
-cnstrs (Case _ e [Alt l]
-Do l [Stmt l]
-MDo l [Stmt l]
-Tuple l Boxed [Exp l]
-UnboxedSum l Int Int (Exp l)
-TupleSection l Boxed [Maybe (Exp l)]
-List l [Exp l]
-ParArray l [Exp l]
-Paren l (Exp l)
-LeftSection l (Exp l) (QOp l)
-RightSection l (QOp l) (Exp l)
-RecConstr l (QName l) [FieldUpdate l]
-RecUpdate l (Exp l) [FieldUpdate l]
-EnumFrom l (Exp l)
-EnumFromTo l (Exp l) (Exp l)
-EnumFromThen l (Exp l) (Exp l)
-EnumFromThenTo l (Exp l) (Exp l) (Exp l)
-ParArrayFromTo l (Exp l) (Exp l)
-ParArrayFromThenTo l (Exp l) (Exp l) (Exp l)
-ListComp l (Exp l) [QualStmt l]
-ParComp l (Exp l) [[QualStmt l]]
-ParArrayComp l (Exp l) [[QualStmt l]]
-ExpTypeSig l (Exp l) (Type l)
-VarQuote l (QName l)
-TypQuote l (QName l)
-BracketExp l (Bracket l)
-SpliceExp l (Splice l)
-QuasiQuote l String String
-TypeApp l (Type l)
-XTag l (XName l) [XAttr l] (Maybe (Exp l)) [Exp l]
-XETag l (XName l) [XAttr l] (Maybe (Exp l))
-XPcdata l String
-XExpTag l (Exp l)
-XChildTag l [Exp l]
-CorePragma l String (Exp l)
-SCCPragma l String (Exp l)
-GenPragma l String (Int, Int) (Int, Int) (Exp l)
-Proc l (Pat l) (Exp l)
-LeftArrApp l (Exp l) (Exp l)
-RightArrApp l (Exp l) (Exp l)
-LeftArrHighApp l (Exp l) (Exp l)
-RightArrHighApp l (Exp l) (Exp l)
-LCase l [Alt l]
+parsePos :: String -> Maybe Pos
+parsePos str =
+  let res = SimpleP.parse posParser str
+  in if null res
+      then Nothing
+      else Just $ fst $ head $ res
+
+posParser :: SParser Pos
+posParser =
+  (,) SimpleP.<$> pCol SimpleP.<*> pRow
+
+-- Might write this better (if it can be done better) later.
+-- For now a copy paste from:
+--  https://stackoverflow.com/questions/40950853/excel-column-to-int-and-vice-versa-improvements-sought
+--
+-- given a spreadsheet column as a string
+-- returns integer giving the position of the column
+-- ex:
+-- toInt "A" = 0
+-- toInt "XFD" = 16383
+toInt :: String -> Int
+toInt = foldl fn 0
+  where
+    fn = \a c -> 26*a + ((ord c)-(ord 'a'))
+
+pCol :: SParser Int
+pCol =
+  toInt SimpleP.<$> SimpleP.some (SimpleP.satisfy (\c -> any (== c) ['a'..'z']))
+pRow :: SParser Int
+pRow =
+  SimpleP.natural
 
 -- | 'isInBox' if the position is inside the box 'Nothing' is returned.
 -- Otherwise, it returns the offset of the position towards the box.

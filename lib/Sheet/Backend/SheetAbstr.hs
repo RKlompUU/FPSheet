@@ -15,6 +15,8 @@ import Data.Functor.Identity
 
 import Data.Map.Lazy
 
+import qualified Data.Set as S
+
 
 -- Annotated text (with for example explicit information about cells that are referred to)
 --class AnnText t where
@@ -51,7 +53,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var
 class (MonadState s m, Var var pos) => Expr s m  e var val pos | e -> val, e -> pos, e -> var, var -> m, e -> m where
   -- | 'evalExpr' evaluates the expression.
   evalExpr :: e -> m (Either String val)
-  refsInExpr :: e -> [pos]
+  refsInExpr :: e -> S.Set pos
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the

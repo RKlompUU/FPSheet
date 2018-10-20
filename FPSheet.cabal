@@ -38,7 +38,9 @@ library
       mtl,
       containers,
       hint >= 0.9.0,
-      haskell-src-exts >= 1.20.3
+      uu-tc,
+      haskell-src-exts >= 1.20.3,
+      haskell-src-exts-util
   default-language: Haskell2010
 
 executable FPSheet-exe
