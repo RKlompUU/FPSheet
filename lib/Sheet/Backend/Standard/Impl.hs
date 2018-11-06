@@ -40,7 +40,7 @@ type E = ExprT VAR
 type C = CellT E
 type S = Sheet C
 
-type StateTy = StateT S (I.InterpreterT IO)
+type StateTy = StateT S IO
 
 instance Spreadsheet S StateTy C E VAR VAL Pos where
   getCell p = do
@@ -49,24 +49,38 @@ instance Spreadsheet S StateTy C E VAR VAL Pos where
   setCell c = do
     s <- get
     put $ s {s_cells = M.insert (c_pos c) c (s_cells s)}
+    return c
   getSetCells = do
     cells <- s_cells <$> get
     return $ M.elems cells
 
 instance Cell S StateTy C E VAR VAL Pos where
   evalCell c = do
+    let cPos = getCellPos c
     if (c_uFlag c)
       then return ()
       else do
         let e = getText c
+            deps = S.toList $ refsInExpr e
+        defs <- (++) "let "
+             <$> intercalate "; "
+             <$> map (\depC -> posToRef (getCellPos depC) ++ " = " ++ getText depC)
+             <$> mapM getCell (cPos : deps)
+        res <- I.runInterpreter $ do
+                  I.setImports ["Prelude"]
+                  I.runStmt defs
+                  I.eval (posToRef cPos)
+        let res' = case res of
+                    Left err -> Nothing
+                    Right str -> Just str
+        setCell (c { c_res = res', c_uFlag = True })
 
-        lift $ trace (posToRef (c_pos c)) I.runStmt $ "let " ++ posToRef (c_pos c) ++ " = " ++  e
-        res <- lift $ I.eval (posToRef (c_pos c))
-        setCell (c { c_res = Just res, c_uFlag = True })
-
-        trace (show $ refsInExpr e) return ()
-        deps <- getCellDeps (c_pos c)
+        deps <- getCellDeps (getCellPos c)
+        trace (posToRef (getCellPos c) ++ ":: " ++ defs ++ ",, " ++ intercalate ", " (map posToRef deps)) return ()
         mapM_ (\p -> getCell p >>= evalCell) deps
+
+        getCell cPos >>= \c' -> setCell (c' { c_uFlag = False })
+        return ()
   getEval = c_res
   getText = c_str
   setText str c = do
