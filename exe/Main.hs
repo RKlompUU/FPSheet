@@ -11,7 +11,7 @@ main :: IO ()
 main = do
   (c,s) <- runStateT test initSheet
   putStrLn (show c)
-  runTUI (UISheet s (0,0) (0,0))
+  runTUI (UISheet s (1,1) (1,1))
 
 test :: StateTy C
 test = do
@@ -20,6 +20,6 @@ test = do
   let p = (1,4)
   getCell p >>= setText "(\\x -> x + a5) $ 5 * 104" >>= evalCell
 
-  getCell p0 >>= setText "5 * 3" >>= evalCell
+  --getCell p0 >>= setText "5 * 3" >>= evalCell
 
   getCell p
