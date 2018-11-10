@@ -7,3 +7,10 @@ import Sheet.Backend.Standard
 data UISheet = UISheet { sheetCells  :: S
                        , sheetCursor :: Pos
                        , sheetOffset :: Pos }
+
+initUISheet =
+  UISheet {
+    sheetCells = initSheet,
+    sheetCursor = (0,0),
+    sheetOffset = (0,0)
+  }

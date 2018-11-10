@@ -2,15 +2,16 @@ module Main where
 
 import Sheet.Backend.Standard
 import Sheet.Frontend.Types
+import Sheet.Frontend.TUI
 
 import qualified Language.Haskell.Interpreter as I
 import qualified Data.Map as M
 
 main :: IO ()
 main = do
-  sh <- initUISheet
-  c <- evalStateT test initSheet
+  (c,s) <- runStateT test initSheet
   putStrLn (show c)
+  runTUI (UISheet s (0,0) (0,0))
 
 test :: StateTy C
 test = do
@@ -22,9 +23,3 @@ test = do
   getCell p0 >>= setText "5 * 3" >>= evalCell
 
   getCell p
-
-initUISheet :: IO UISheet
-initUISheet = do
-  let cols = 7
-      rows = 12
-  return $ UISheet initSheet (0,0) (0,0)

@@ -48,6 +48,7 @@ executable FPSheet-exe
   other-modules:
       Paths_FPSheet
       Sheet.Frontend.Types
+      Sheet.Frontend.TUI
   hs-source-dirs:
       exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
@@ -55,5 +56,7 @@ executable FPSheet-exe
       FPSheet,
       hint >= 0.9.0,
       base >=4.7 && <5,
-      containers
+      containers,
+      brick,
+      vty
   default-language: Haskell2010

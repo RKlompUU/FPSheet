@@ -52,8 +52,6 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var
 
 -- | The 'Expr' API interface supplies expression manipulation functions.
 class (MonadState s m, Var var pos) => Expr s m  e var val pos | e -> val, e -> pos, e -> var, var -> m, e -> m where
-  -- | 'evalExpr' evaluates the expression.
-  evalExpr :: e -> m (Either String val)
   refsInExpr :: e -> S.Set pos
 
 -- | The 'Var' API interface is currently purely used to allow for different

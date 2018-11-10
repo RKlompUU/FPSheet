@@ -31,8 +31,6 @@ import qualified Language.Haskell.Exts.Parser as P
 import qualified Language.Haskell.Exts.Syntax as P
 import Language.Haskell.Exts.Util
 
-import Debug.Trace
-
 
 type VAR = VarT
 type VAL = String
@@ -76,7 +74,6 @@ instance Cell S StateTy C E VAR VAL Pos where
         setCell (c { c_res = res', c_uFlag = True })
 
         deps <- getCellDeps (getCellPos c)
-        trace (posToRef (getCellPos c) ++ ":: " ++ defs ++ ",, " ++ intercalate ", " (map posToRef deps)) return ()
         mapM_ (\p -> getCell p >>= evalCell) deps
 
         getCell cPos >>= \c' -> setCell (c' { c_uFlag = False })
@@ -98,8 +95,6 @@ instance Var VAR Pos where
   posToRef (c,r) =
     toCol c ++ show r
 instance Expr S StateTy E VAR VAL Pos where
-  evalExpr eStr = do
-    undefined
   refsInExpr eStr =
     case P.parseExp eStr of
       P.ParseFailed _ _ -> S.empty
