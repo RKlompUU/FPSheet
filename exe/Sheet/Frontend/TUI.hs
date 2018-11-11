@@ -31,9 +31,9 @@ runTUI initialState = do
 
 drawImpl :: BrickS -> [Widget BrickN]
 drawImpl s =
-  let (rowOffset, colOffset) = sheetOffset s
-      colsNum = 10
-      rowsNum = 20
+  let (colOffset, rowOffset) = sheetOffset s
+      colsNum = uiCols s
+      rowsNum = uiRows s
 
       cols = [colOffset..colOffset + colsNum]
       rows = [rowOffset..rowOffset + rowsNum]
@@ -69,22 +69,46 @@ renderRowTag (_,rCursor) row
 chooseCursorImpl :: BrickS -> [CursorLocation BrickN] -> Maybe (CursorLocation BrickN)
 chooseCursorImpl _ _ = Nothing
 
+widthToColNum :: Int -> Int
+widthToColNum width = width `div` 5
+heightToRowNum :: Int -> Int
+heightToRowNum height = height - 4
+
+moveCursor :: Int -> Int -> BrickS -> BrickS
+moveCursor toCol toRow s =
+  let toCol' = max 1 toCol
+      toRow' = max 1 toRow
+      (offsetCol, offsetRow) = sheetOffset s
+      offsetCol' = if toCol' < offsetCol
+                    then toCol'
+                    else if toCol' > offsetCol + uiCols s
+                          then toCol' - uiCols s
+                          else offsetCol
+      offsetRow' = if toRow' < offsetRow
+                    then toRow'
+                    else if toRow' > offsetRow + uiRows s
+                          then toRow' - uiRows s
+                          else offsetRow
+  in s { sheetCursor = (toCol', toRow'), sheetOffset = (offsetCol', offsetRow') }
+
 handleEventImpl :: BrickS -> BrickEvent BrickN BrickE -> EventM BrickN (Next BrickS)
 handleEventImpl s ev =
   case ev of
     VtyEvent (EvKey KEsc []) -> halt s
     VtyEvent (EvKey KRight []) -> do
       let (cCursor, rCursor) = sheetCursor s
-      continue (s {sheetCursor = (cCursor+1, rCursor)})
+      continue $ moveCursor (cCursor + 1) rCursor s
     VtyEvent (EvKey KLeft []) -> do
       let (cCursor, rCursor) = sheetCursor s
-      continue (s {sheetCursor = (max 1 (cCursor-1), rCursor)})
+      continue $ moveCursor (cCursor-1) rCursor s
     VtyEvent (EvKey KUp []) -> do
       let (cCursor, rCursor) = sheetCursor s
-      continue (s {sheetCursor = (cCursor, max 1 (rCursor-1))})
+      continue $ moveCursor cCursor (rCursor-1) s
     VtyEvent (EvKey KDown []) -> do
       let (cCursor, rCursor) = sheetCursor s
-      continue (s {sheetCursor = (cCursor, rCursor+1)})
+      continue $ moveCursor cCursor (rCursor + 1) s
+    VtyEvent (EvResize width height) -> do
+      continue $ s { uiCols = widthToColNum width, uiRows = heightToRowNum height }
     _ -> do
       cells' <- liftIO $ do
         flip execStateT (sheetCells s) $ do

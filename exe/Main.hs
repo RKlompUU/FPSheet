@@ -7,11 +7,14 @@ import Sheet.Frontend.TUI
 import qualified Language.Haskell.Interpreter as I
 import qualified Data.Map as M
 
+import System.Console.Terminal.Size
+
 main :: IO ()
 main = do
   (c,s) <- runStateT test initSheet
   putStrLn (show c)
-  runTUI (UISheet s (1,1) (1,1))
+  (cols, rows) <- maybe (10,10) (\w -> (widthToColNum $ width w, heightToRowNum $ height w)) <$> size
+  runTUI (UISheet s (1,1) (1,1) cols rows)
 
 test :: StateTy C
 test = do
