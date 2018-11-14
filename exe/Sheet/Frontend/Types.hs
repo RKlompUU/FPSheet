@@ -9,9 +9,6 @@ import Brick.Widgets.Edit
 -- submodule pass a value of this datatype along in a statewise matter.
 data UISheet =
   UISheet {
-    backendJobsChan :: Chan BackendJob,
-    backendResChan :: Chan BackendJob,
-
     sheetCells  :: S,
     sheetCursor :: Pos,
     sheetOffset :: Pos,

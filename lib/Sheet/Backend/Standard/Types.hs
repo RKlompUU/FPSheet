@@ -51,7 +51,7 @@ data BackendJob =
   BackendJob {
     bJob_tag :: Pos, -- The tag gets copied to the response message
 
-    bJob_defs :: String,
+    bJob_defs :: [(String,String)],
     bJob_eval :: String
   }
 data BackendJobResponse =

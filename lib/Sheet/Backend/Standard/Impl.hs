@@ -55,9 +55,7 @@ instance Cell S StateTy C E VAR VAL Pos where
         let e = getText c
             deps = S.toList $ refsInExpr e
 
-        defs <- (++) "let "
-             <$> intercalate "; "
-             <$> map (\depC -> posToRef (getCellPos depC) ++ " = " ++ getText depC)
+        defs <- map (\depC -> (posToRef (getCellPos depC), getText depC))
              <$> mapM getCell (cPos : deps)
         let j = BackendJob cPos defs (posToRef cPos)
 
@@ -215,12 +213,26 @@ ghciThread jobs resp = do
     I.setImports ["Prelude"]
     loop $ do
       j <- liftIO $ readChan jobs
-      I.runStmt (bJob_defs j)
-      res <- I.eval (bJob_eval j)
-      let res' = BackendJobResponse (bJob_tag j) (Just res)
-        {- case res of
-                  Left err -> BackendJobResponse (bJob_tag j) Nothing
-                  Right str -> BackendJobResponse (bJob_tag j) (Just str) -}
+
+      defsCheck <- mapM I.typeChecks (map snd (bJob_defs j))
+
+      res' <- if all id defsCheck
+                then do
+                  let letDefs = (++) "let "
+                              $ intercalate "; "
+                              $ map (\(name, def) -> name ++ " = " ++ def)
+                              $ bJob_defs j
+                  I.runStmt letDefs
+
+                  evalCheck <- I.typeChecks ("show (" ++ bJob_eval j ++ ")")
+                  if evalCheck
+                    then do
+                      res <- I.eval (bJob_eval j)
+                      return $ BackendJobResponse (bJob_tag j) (Just res)
+                    else
+                      return $ BackendJobResponse (bJob_tag j) Nothing
+                else
+                  return $ BackendJobResponse (bJob_tag j) Nothing
       liftIO $ writeChan resp res'
   return ()
 
