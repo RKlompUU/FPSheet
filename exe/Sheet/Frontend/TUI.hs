@@ -3,6 +3,8 @@ module Sheet.Frontend.TUI where
 import Sheet.Backend.Standard
 import Sheet.Frontend.Types
 
+import Control.Concurrent.Chan
+
 import Brick.Widgets.Core
 import Graphics.Vty
 import Brick.Util
@@ -13,6 +15,9 @@ import Brick.Widgets.Edit
 import Brick.Types
 
 import Data.List
+
+
+import System.Console.Terminal.Size
 
 import qualified Data.Text as T
 
@@ -25,8 +30,9 @@ type BrickS = UISheet
 type BrickE = () -- Custom event type
 type BrickN = String -- Custom resource type
 
-runTUI :: BrickS -> IO ()
-runTUI initialState = do
+runTUI :: IO ()
+runTUI = do
+  initialState <- initUISheet
   let app = App { appDraw = drawImpl,
                   appChooseCursor = chooseCursorImpl,
                   appHandleEvent = handleEventImpl,
@@ -74,7 +80,7 @@ renderSelectedCell s =
                                                     text -> str text
 
                         ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
-                          hLimit (editWidth) $ renderEditor (str . intercalate "\n") True editField
+                          hLimit (editWidth) $ renderEditor (str . flip (++) "." . intercalate "\n") True editField
   in withAttr blueBg $ translateBy (Location $ sheetCursorPos s) cellRendering
 
 editorTextRenderer :: [String] -> Widget BrickN
@@ -172,7 +178,7 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
     VtyEvent (EvKey KEnter []) -> do
       let (col,row) = sheetCursor s
           str = maybe "" getText $ M.lookup (col,row) (s_cells $ sheetCells s)
-      continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str, cellEditorWidth = max (cWidth s) (length str + 1)} }
+      continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str, cellEditorWidth = max (cWidth s) (length str + 2)} }
     VtyEvent (EvKey KRight []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor (cCursor + 1) rCursor s
@@ -205,12 +211,14 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev
       continue $ s { sheetCells = cells', uiMode = ModeNormal }
     VtyEvent vtEv -> do
       e' <- handleEditorEvent vtEv editField
-      continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (1 + (length $ intercalate "\n" $ getEditContents e'))} }
+      continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
     _ -> continue s
 
-
 startEventImpl :: BrickS -> EventM BrickN BrickS
-startEventImpl s = return s
+startEventImpl s = do
+  (cols, rows) <- liftIO $ maybe (80,24) (\w -> (width w, height w))
+                        <$> size
+  return $ uiResize cols rows s
 
 attrMapImpl :: BrickS -> AttrMap
 attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue) ]

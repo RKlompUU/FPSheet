@@ -2,12 +2,16 @@ module Sheet.Frontend.Types where
 
 import Sheet.Backend.Standard
 
+import Control.Concurrent.Chan
 import Brick.Widgets.Edit
 
 -- | 'UISheet' defines the spreadsheet type. The functions in this UI
 -- submodule pass a value of this datatype along in a statewise matter.
 data UISheet =
   UISheet {
+    backendJobsChan :: Chan BackendJob,
+    backendResChan :: Chan BackendJob,
+
     sheetCells  :: S,
     sheetCursor :: Pos,
     sheetOffset :: Pos,
@@ -26,13 +30,15 @@ data UIMode =
       cellEditorWidth :: Int
     }
 
-initUISheet =
-  UISheet {
-    sheetCells = initSheet,
+initUISheet :: IO UISheet
+initUISheet = do
+  sheet <- initSheet
+  return $ UISheet {
+    sheetCells = sheet,
     sheetCursor = (1,1),
     sheetOffset = (1,1),
     uiCols = 10,
     uiRows = 10,
-    cWidth = 5,
+    cWidth = 15,
     uiMode = ModeNormal
   }

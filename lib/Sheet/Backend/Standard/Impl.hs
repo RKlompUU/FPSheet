@@ -26,19 +26,13 @@ import qualified Data.Set as S
 import Sheet.Backend.SheetAbstr
 import Sheet.Backend.Standard.Types
 
+import Control.Concurrent.Chan
+import Control.Concurrent
+
 import qualified Language.Haskell.Interpreter as I
 import qualified Language.Haskell.Exts.Parser as P
 import qualified Language.Haskell.Exts.Syntax as P
 import Language.Haskell.Exts.Util
-
-
-type VAR = VarT
-type VAL = String
-type E = ExprT VAR
-type C = CellT E
-type S = Sheet C
-
-type StateTy = StateT S IO
 
 instance Spreadsheet S StateTy C E VAR VAL Pos where
   getCell p = do
@@ -60,18 +54,20 @@ instance Cell S StateTy C E VAR VAL Pos where
       else do
         let e = getText c
             deps = S.toList $ refsInExpr e
+
         defs <- (++) "let "
              <$> intercalate "; "
              <$> map (\depC -> posToRef (getCellPos depC) ++ " = " ++ getText depC)
              <$> mapM getCell (cPos : deps)
-        res <- I.runInterpreter $ do
-                  I.setImports ["Prelude"]
-                  I.runStmt defs
-                  I.eval (posToRef cPos)
-        let res' = case res of
-                    Left err -> Nothing
-                    Right str -> Just str
-        setCell (c { c_res = res', c_uFlag = True })
+        let j = BackendJob cPos defs (posToRef cPos)
+
+        jobChan <- s_jobsChan <$> get
+        resChan <- s_resChan <$> get
+        res <- liftIO $ do
+                writeChan jobChan j
+                readChan resChan
+
+        setCell (c { c_res = bJobRes_result res, c_uFlag = True })
 
         deps <- getCellDeps (getCellPos c)
         mapM_ (\p -> getCell p >>= evalCell) deps
@@ -206,5 +202,27 @@ subLists i xs =
   let is = [0,i..(length xs - 1)]
   in map (\i' -> sliceList i' (i'+i-1) xs) is
 
-initSheet :: S
-initSheet = Sheet M.empty M.empty
+initSheet :: IO S
+initSheet = do
+  jobChan <- newChan
+  resChan <- newChan
+  forkIO (ghciThread jobChan resChan)
+  return $ Sheet M.empty M.empty jobChan resChan
+
+ghciThread :: ChanJobs -> ChanResps -> IO ()
+ghciThread jobs resp = do
+  I.runInterpreter $ do
+    I.setImports ["Prelude"]
+    loop $ do
+      j <- liftIO $ readChan jobs
+      I.runStmt (bJob_defs j)
+      res <- I.eval (bJob_eval j)
+      let res' = BackendJobResponse (bJob_tag j) (Just res)
+        {- case res of
+                  Left err -> BackendJobResponse (bJob_tag j) Nothing
+                  Right str -> BackendJobResponse (bJob_tag j) (Just str) -}
+      liftIO $ writeChan resp res'
+  return ()
+
+loop :: Monad m => m () -> m ()
+loop action = action >> loop action

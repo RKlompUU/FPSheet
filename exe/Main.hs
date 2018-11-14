@@ -7,14 +7,9 @@ import Sheet.Frontend.TUI
 import qualified Language.Haskell.Interpreter as I
 import qualified Data.Map as M
 
-import System.Console.Terminal.Size
-
 main :: IO ()
 main = do
-  (c,s) <- runStateT test initSheet
-  (cols, rows) <- maybe (80,24) (\w -> (width w, height w))
-              <$> size
-  runTUI $ uiResize cols rows (initUISheet { sheetCells = s })
+  runTUI
 
 test :: StateTy C
 test = do

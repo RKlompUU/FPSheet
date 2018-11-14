@@ -9,6 +9,7 @@ import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Map as M
 
+import Control.Concurrent.Chan
 
 import Sheet.Backend.SheetAbstr
 
@@ -26,8 +27,36 @@ data CellT e =
 
 data Sheet c =
   Sheet { s_cells :: Map Pos c
-        , s_deps  :: Map Pos [Pos] }
+        , s_deps  :: Map Pos [Pos]
+        , s_jobsChan :: ChanJobs
+        , s_resChan :: ChanResps
+  }
 
 type ExprT v = String
 
 type VarT = String
+
+type VAR = VarT
+type VAL = String
+type E = ExprT VAR
+type C = CellT E
+type S = Sheet C
+
+type StateTy = StateT S IO
+
+type ChanJobs = Chan BackendJob
+type ChanResps = Chan BackendJobResponse
+
+data BackendJob =
+  BackendJob {
+    bJob_tag :: Pos, -- The tag gets copied to the response message
+
+    bJob_defs :: String,
+    bJob_eval :: String
+  }
+data BackendJobResponse =
+  BackendJobResponse {
+    bJobRes_tag :: Pos,
+
+    bJobRes_result :: Maybe String
+  }
