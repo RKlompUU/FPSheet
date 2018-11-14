@@ -9,6 +9,12 @@ import Brick.Util
 import Brick.Widgets.Border
 import Brick.Widgets.Center
 import Brick
+import Brick.Widgets.Edit
+import Brick.Types
+
+import Data.List
+
+import qualified Data.Text as T
 
 import System.Exit
 import Control.Monad.IO.Class
@@ -17,7 +23,7 @@ import qualified Data.Map as M
 
 type BrickS = UISheet
 type BrickE = () -- Custom event type
-type BrickN = () -- Custom resource type
+type BrickN = String -- Custom resource type
 
 runTUI :: BrickS -> IO ()
 runTUI initialState = do
@@ -38,28 +44,70 @@ drawImpl s =
       cols = [colOffset..colOffset + colsNum]
       rows = [rowOffset..rowOffset + rowsNum]
 
-      colsHeader = hBox $ map (renderColTag (sheetCursor s)) cols
+      colsHeader = hBox
+                 $ insertColSeps
+                 $ map (renderColTag s (sheetCursor s)) cols
       rowsHeader = vBox $ map (renderRowTag (sheetCursor s)) rows
 
       cells = s_cells $ sheetCells s
-      cellRows = [[M.lookup (c,r) cells | c <- cols] | r <- rows]
+      cellRows = [[(c,r) | c <- cols] | r <- rows]
+  in renderSelectedCell s :
+     [(str " " <=>
+       fixedWidthRightStr (headerWidth s) "," <=>
+       (rowsHeader <+> vBorder)) <+>
+      (colsHeader <=>
+       hBorder <=>
+       vBox (map (hBox . insertColSeps . map (renderCell s)) cellRows))]
 
-      rawSheet = M.toList (s_cells $ sheetCells s)
-  in [(str " " <=> str " " <=> (rowsHeader <+> vBorder)) <+>
-      (colsHeader <=> hBorder <=>
-       vBox (map (hBox . map renderCell) cellRows))]
+insertColSeps :: [Widget BrickN] -> [Widget BrickN]
+insertColSeps = intercalate [str $ take colSep $ repeat ' '] . map (: [])
 
-renderCell :: Maybe C -> Widget BrickN
-renderCell Nothing = str " "
-renderCell (Just c) =
-  case getEval c of
-    Just res -> str res
-    Nothing  -> str (getText c)
+renderSelectedCell :: BrickS -> Widget BrickN
+renderSelectedCell s =
+  let p@(cCursor, rCursor) = sheetCursor s
+      cell = M.lookup p (s_cells $ sheetCells s)
+      cellRendering = case uiMode s of
+                        ModeNormal -> case cell of
+                                        Nothing -> fixedWidthLeftStr (cWidth s) ""
+                                        Just c -> case maybe (getText c) id $ getEval c of
+                                                    ""   -> fixedWidthLeftStr (cWidth s) ""
+                                                    text -> str text
 
-renderColTag :: Pos -> Int -> Widget BrickN
-renderColTag (cCursor,_) col
-  | col == cCursor = withAttr blueBg $ hCenter $ str $ toCol col
-  | otherwise      = hCenter $ str $ toCol col
+                        ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
+                          hLimit (editWidth) $ renderEditor (str . intercalate "\n") True editField
+  in withAttr blueBg $ translateBy (Location $ sheetCursorPos s) cellRendering
+
+editorTextRenderer :: [String] -> Widget BrickN
+editorTextRenderer lns =
+  let line = intercalate "\n" lns
+  in hLimit (length line) $ str line
+
+renderCell :: BrickS -> Pos -> Widget BrickN
+renderCell s (col,row) =
+  let (cCursor, rCursor) = sheetCursor s
+      cell = M.lookup (col,row) (s_cells $ sheetCells s)
+  in case cell of
+      Nothing -> fixedWidthLeftStr (cWidth s) ""
+      Just c -> case getEval c of
+                  Just res -> fixedWidthLeftStr (cWidth s) res
+                  Nothing  -> fixedWidthLeftStr (cWidth s) (getText c)
+
+fixedWidthLeftStr :: Int -> String -> Widget BrickN
+fixedWidthLeftStr width str =
+  txt $ T.justifyLeft width ' ' $ T.pack $ take width str
+
+fixedWidthCenterStr :: Int -> String -> Widget BrickN
+fixedWidthCenterStr width str =
+  txt $ T.center width ' ' $ T.pack $ take width str
+
+fixedWidthRightStr :: Int -> String -> Widget BrickN
+fixedWidthRightStr width str =
+  txt $ T.justifyRight width ' ' $ T.pack $ take width str
+
+renderColTag :: BrickS -> Pos -> Int -> Widget BrickN
+renderColTag s (cCursor,_) col
+  | col == cCursor = withAttr blueBg $ fixedWidthCenterStr (cWidth s) $ toCol col
+  | otherwise      = fixedWidthCenterStr (cWidth s) $ toCol col
 
 renderRowTag :: Pos -> Int -> Widget BrickN
 renderRowTag (_,rCursor) row
@@ -67,12 +115,36 @@ renderRowTag (_,rCursor) row
   | otherwise      = str $ show row
 
 chooseCursorImpl :: BrickS -> [CursorLocation BrickN] -> Maybe (CursorLocation BrickN)
-chooseCursorImpl _ _ = Nothing
+chooseCursorImpl _ [] = Nothing
+chooseCursorImpl _ cs = Just $ head cs
 
-widthToColNum :: Int -> Int
-widthToColNum width = width `div` 5
-heightToRowNum :: Int -> Int
-heightToRowNum height = height - 4
+sheetCursorPos :: UISheet -> Pos
+sheetCursorPos s =
+  let (cCursor, rCursor) = sheetCursor s
+      (cOffset, rOffset) = sheetOffset s
+      x = (cCursor - cOffset) * (cWidth s + colSep) + headerWidth s
+      y = (rCursor - rOffset) + headerHeight s
+  in (x,y)
+
+uiResize :: Int -> Int -> UISheet -> UISheet
+uiResize width height s =
+  let rows = height - headerHeight s - 2
+      cols = ((width - (headerWidth (s {uiRows = rows})) - 1) `div` (cWidth s + colSep)) - 1
+  in s {
+    uiCols = cols,
+    uiRows = rows
+  }
+
+headerWidth :: UISheet -> Int
+headerWidth s =
+  let (_,rOffset) = sheetOffset s
+  in (length $ show (rOffset + uiRows s)) + 1
+
+headerHeight :: UISheet -> Int
+headerHeight _ = 2
+
+colSep :: Int
+colSep = 1
 
 moveCursor :: Int -> Int -> BrickS -> BrickS
 moveCursor toCol toRow s =
@@ -92,9 +164,15 @@ moveCursor toCol toRow s =
   in s { sheetCursor = (toCol', toRow'), sheetOffset = (offsetCol', offsetRow') }
 
 handleEventImpl :: BrickS -> BrickEvent BrickN BrickE -> EventM BrickN (Next BrickS)
-handleEventImpl s ev =
+handleEventImpl s (VtyEvent (EvResize width height)) = do
+  continue $ uiResize width height s
+handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
   case ev of
     VtyEvent (EvKey KEsc []) -> halt s
+    VtyEvent (EvKey KEnter []) -> do
+      let (col,row) = sheetCursor s
+          str = maybe "" getText $ M.lookup (col,row) (s_cells $ sheetCells s)
+      continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str, cellEditorWidth = max (cWidth s) (length str + 1)} }
     VtyEvent (EvKey KRight []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor (cCursor + 1) rCursor s
@@ -107,16 +185,29 @@ handleEventImpl s ev =
     VtyEvent (EvKey KDown []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor cCursor (rCursor + 1) s
-    VtyEvent (EvResize width height) -> do
-      continue $ s { uiCols = widthToColNum width, uiRows = heightToRowNum height }
     _ -> do
       cells' <- liftIO $ do
         flip execStateT (sheetCells s) $ do
           let p = (1,1)
-              p0 = (1,5)
+              p0 = (3,4)
           getCell p >>= setText "8 - 3" >>= evalCell
           getCell p0 >>= setText "5 * 3" >>= evalCell
       continue (s {sheetCells = cells'})
+handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev = do
+  case ev of
+    VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
+    VtyEvent (EvKey KEnter []) -> do
+      let str = intercalate "\n" $ getEditContents editField
+      cells' <- liftIO $ do
+        flip execStateT (sheetCells s) $ do
+          let p = sheetCursor s
+          getCell p >>= setText str >>= evalCell
+      continue $ s { sheetCells = cells', uiMode = ModeNormal }
+    VtyEvent vtEv -> do
+      e' <- handleEditorEvent vtEv editField
+      continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (1 + (length $ intercalate "\n" $ getEditContents e'))} }
+    _ -> continue s
+
 
 startEventImpl :: BrickS -> EventM BrickN BrickS
 startEventImpl s = return s
@@ -124,4 +215,8 @@ startEventImpl s = return s
 attrMapImpl :: BrickS -> AttrMap
 attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue) ]
 
+withAttrs :: [AttrName] -> Widget BrickN -> Widget BrickN
+withAttrs attrs w = foldr withAttr w attrs
+
 blueBg = attrName "blueBg"
+dialog = attrName "dialog"
