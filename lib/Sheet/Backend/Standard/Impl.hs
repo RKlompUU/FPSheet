@@ -62,6 +62,11 @@ instance Cell S StateTy C E VAR VAL Pos where
         res <- liftIO $ do
                 writeChan jobChan j
                 readChan resChan
+        case bJobRes_report res of
+          DefsFailure -> do
+            let j' = BackendJobApplyDefs [(posToRef cPos, "undefined")]
+            liftIO $ writeChan jobChan j'
+          _ -> return ()
 
         setCell (c { c_res = bJobRes_result res, c_uFlag = True })
 
@@ -210,22 +215,37 @@ ghciThread jobs resp = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     loop $ do
-      j <- liftIO $ readChan jobs
+      fetchedJob <- liftIO $ readChan jobs
+      case fetchedJob of
+        BackendJobApplyDefs defs -> do
+          let letDefs = (++) "let "
+                      $ intercalate "; "
+                      $ map (\(name, def) -> name ++ " = " ++ def)
+                      $ defs
+          liftIO $ ghciLog $
+            "\tletDefs: " ++ letDefs ++ "\n"
+          --I.runStmt letDefs
+        j@(BackendJob{}) -> do
+          res' <- do
+            let letDefs = (++) "let "
+                        $ intercalate "; "
+                        $ map (\(name, def) -> name ++ " = " ++ def)
+                        $ bJob_defs j
+            liftIO $ ghciLog $
+              "new Job: " ++ show j ++ "\n" ++
+              "\tletDefs: " ++ letDefs ++ "\n"
+            flip MC.catch (\(e :: SomeException) -> liftIO (ghciLog ("\t" ++ show e ++ "\n")) >> return (BackendJobResponse (bJob_tag j) DefsFailure Nothing)) $ do
+              I.runStmt letDefs
 
-      res' <- flip MC.catch (\(e :: SomeException) -> return $ BackendJobResponse (bJob_tag j) Nothing) $ do
-        let letDefs = (++) "let "
-                    $ intercalate "; "
-                    $ map (\(name, def) -> name ++ " = " ++ def)
-                    $ bJob_defs j
-        liftIO $ ghciLog $
-          "\tletDefs: " ++ letDefs ++ "\n"
-        I.runStmt letDefs
+              liftIO $ ghciLog $
+                "\tletDefs executed\n"
 
-        res <- I.eval (bJob_eval j)
-        liftIO $ ghciLog $
-          "\tres: " ++ show res ++ "\n"
-        return $ BackendJobResponse (bJob_tag j) (Just res)
-      liftIO $ writeChan resp res'
+              flip MC.catch (\(e :: SomeException) -> liftIO (ghciLog ("\t" ++ show e ++ "\n")) >> return (BackendJobResponse (bJob_tag j) EvalFailure Nothing)) $ do
+                res <- I.eval (bJob_eval j)
+                liftIO $ ghciLog $
+                  "\tres: " ++ show res ++ "\n"
+                return $ BackendJobResponse (bJob_tag j) Success (Just res)
+          liftIO $ writeChan resp res'
   ghciLog (show crash)
   return ()
 

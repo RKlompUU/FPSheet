@@ -48,15 +48,25 @@ type ChanJobs = Chan BackendJob
 type ChanResps = Chan BackendJobResponse
 
 data BackendJob =
+  BackendJobApplyDefs [(String,String)] |
   BackendJob {
     bJob_tag :: Pos, -- The tag gets copied to the response message
 
     bJob_defs :: [(String,String)],
     bJob_eval :: String
   } deriving Show
+
 data BackendJobResponse =
   BackendJobResponse {
     bJobRes_tag :: Pos,
 
+    bJobRes_report :: JobReport,
     bJobRes_result :: Maybe String
   } deriving Show
+
+data JobReport =
+  Success |
+  DefsFailure |
+  EvalFailure |
+  Failure
+  deriving Show

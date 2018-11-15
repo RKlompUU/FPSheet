@@ -7,6 +7,7 @@ import Control.Concurrent.Chan
 
 import Brick.Widgets.Core
 import Graphics.Vty
+import Graphics.Vty.Attributes
 import Brick.Util
 import Brick.Widgets.Border
 import Brick.Widgets.Center
@@ -81,7 +82,7 @@ renderSelectedCell s =
 
                         ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
                           hLimit (editWidth) $ renderEditor (str . flip (++) "." . intercalate "\n") True editField
-  in withAttr blueBg $ translateBy (Location $ sheetCursorPos s) cellRendering
+  in applyStandout $ translateBy (Location $ sheetCursorPos s) cellRendering
 
 editorTextRenderer :: [String] -> Widget BrickN
 editorTextRenderer lns =
@@ -112,12 +113,12 @@ fixedWidthRightStr width str =
 
 renderColTag :: BrickS -> Pos -> Int -> Widget BrickN
 renderColTag s (cCursor,_) col
-  | col == cCursor = withAttr blueBg $ fixedWidthCenterStr (cWidth s) $ toCol col
+  | col == cCursor = applyStandout $ fixedWidthCenterStr (cWidth s) $ toCol col
   | otherwise      = fixedWidthCenterStr (cWidth s) $ toCol col
 
 renderRowTag :: Pos -> Int -> Widget BrickN
 renderRowTag (_,rCursor) row
-  | row == rCursor = withAttr blueBg $ str $ show row
+  | row == rCursor = applyStandout $ str $ show row
   | otherwise      = str $ show row
 
 chooseCursorImpl :: BrickS -> [CursorLocation BrickN] -> Maybe (CursorLocation BrickN)
@@ -227,4 +228,7 @@ withAttrs :: [AttrName] -> Widget BrickN -> Widget BrickN
 withAttrs attrs w = foldr withAttr w attrs
 
 blueBg = attrName "blueBg"
-dialog = attrName "dialog"
+
+applyStandout :: Widget BrickN -> Widget BrickN
+applyStandout w =
+  withAttr blueBg $ modifyDefAttr (flip withStyle standout) w
