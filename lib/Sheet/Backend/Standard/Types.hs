@@ -53,10 +53,10 @@ data BackendJob =
 
     bJob_defs :: [(String,String)],
     bJob_eval :: String
-  }
+  } deriving Show
 data BackendJobResponse =
   BackendJobResponse {
     bJobRes_tag :: Pos,
 
     bJobRes_result :: Maybe String
-  }
+  } deriving Show

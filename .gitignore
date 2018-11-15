@@ -13,3 +13,4 @@ cabal.config
 *.swp
 .web-log
 .sheet
+.ghciLog

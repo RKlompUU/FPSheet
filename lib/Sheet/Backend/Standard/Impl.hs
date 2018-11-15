@@ -34,6 +34,8 @@ import qualified Language.Haskell.Exts.Parser as P
 import qualified Language.Haskell.Exts.Syntax as P
 import Language.Haskell.Exts.Util
 
+import Control.Monad.Catch as MC
+
 instance Spreadsheet S StateTy C E VAR VAL Pos where
   getCell p = do
     cells <- s_cells <$> get
@@ -53,11 +55,7 @@ instance Cell S StateTy C E VAR VAL Pos where
       then return ()
       else do
         let e = getText c
-            deps = S.toList $ refsInExpr e
-
-        defs <- map (\depC -> (posToRef (getCellPos depC), getText depC))
-             <$> mapM getCell (cPos : deps)
-        let j = BackendJob cPos defs (posToRef cPos)
+        let j = BackendJob cPos [(posToRef cPos, e)] (posToRef cPos)
 
         jobChan <- s_jobsChan <$> get
         resChan <- s_resChan <$> get
@@ -209,32 +207,31 @@ initSheet = do
 
 ghciThread :: ChanJobs -> ChanResps -> IO ()
 ghciThread jobs resp = do
-  I.runInterpreter $ do
+  crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     loop $ do
       j <- liftIO $ readChan jobs
 
-      defsCheck <- mapM I.typeChecks (map snd (bJob_defs j))
+      res' <- flip MC.catch (\(e :: SomeException) -> return $ BackendJobResponse (bJob_tag j) Nothing) $ do
+        let letDefs = (++) "let "
+                    $ intercalate "; "
+                    $ map (\(name, def) -> name ++ " = " ++ def)
+                    $ bJob_defs j
+        liftIO $ ghciLog $
+          "\tletDefs: " ++ letDefs ++ "\n"
+        I.runStmt letDefs
 
-      res' <- if all id defsCheck
-                then do
-                  let letDefs = (++) "let "
-                              $ intercalate "; "
-                              $ map (\(name, def) -> name ++ " = " ++ def)
-                              $ bJob_defs j
-                  I.runStmt letDefs
-
-                  evalCheck <- I.typeChecks ("show (" ++ bJob_eval j ++ ")")
-                  if evalCheck
-                    then do
-                      res <- I.eval (bJob_eval j)
-                      return $ BackendJobResponse (bJob_tag j) (Just res)
-                    else
-                      return $ BackendJobResponse (bJob_tag j) Nothing
-                else
-                  return $ BackendJobResponse (bJob_tag j) Nothing
+        res <- I.eval (bJob_eval j)
+        liftIO $ ghciLog $
+          "\tres: " ++ show res ++ "\n"
+        return $ BackendJobResponse (bJob_tag j) (Just res)
       liftIO $ writeChan resp res'
+  ghciLog (show crash)
   return ()
+
+ghciLog :: String -> IO ()
+ghciLog str = do
+  appendFile ".ghciLog" str
 
 loop :: Monad m => m () -> m ()
 loop action = action >> loop action
