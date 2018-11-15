@@ -224,7 +224,7 @@ ghciThread jobs resp = do
                       $ defs
           liftIO $ ghciLog $
             "\tletDefs: " ++ letDefs ++ "\n"
-          --I.runStmt letDefs
+          I.runStmt letDefs
         j@(BackendJob{}) -> do
           res' <- do
             let letDefs = (++) "let "
