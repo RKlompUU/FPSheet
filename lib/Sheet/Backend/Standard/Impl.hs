@@ -54,21 +54,17 @@ instance Cell S StateTy C E VAR VAL Pos where
     if (c_uFlag c)
       then return ()
       else do
-        let e = getText c
-        let j = BackendJob cPos [(posToRef cPos, e)] (posToRef cPos)
+        -- Set uFlag to true, to prevent infinite recursion into cyclic cell dependencies
+        setCell (c { c_uFlag = True })
 
         jobChan <- s_jobsChan <$> get
-        resChan <- s_resChan <$> get
-        res <- liftIO $ do
-                writeChan jobChan j
-                readChan resChan
-        case bJobRes_report res of
-          DefsFailure -> do
-            let j' = BackendJobApplyDefs [(posToRef cPos, "undefined")]
-            liftIO $ writeChan jobChan j'
-          _ -> return ()
+        let e = getText c
+        let j = BackendJob (posToRef cPos) e $
+                  \res -> do
+                    getCell cPos >>= \c' -> setCell (c' { c_res = res })
+                    return ()
 
-        setCell (c { c_res = bJobRes_result res, c_uFlag = True })
+        liftIO $ writeChan jobChan j
 
         deps <- getCellDeps (getCellPos c)
         mapM_ (\p -> getCell p >>= evalCell) deps
@@ -203,55 +199,51 @@ subLists i xs =
   let is = [0,i..(length xs - 1)]
   in map (\i' -> sliceList i' (i'+i-1) xs) is
 
-initSheet :: IO S
-initSheet = do
+initSheet :: (BackendJobResponse -> IO ()) -> IO S
+initSheet asyncResFunc = do
   jobChan <- newChan
   resChan <- newChan
-  forkIO (ghciThread jobChan resChan)
-  return $ Sheet M.empty M.empty jobChan resChan
+  forkIO (ghciThread jobChan asyncResFunc)
+  return $ Sheet M.empty M.empty jobChan
 
-ghciThread :: ChanJobs -> ChanResps -> IO ()
-ghciThread jobs resp = do
+ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
+ghciThread jobs respF = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     loop $ do
-      fetchedJob <- liftIO $ readChan jobs
-      case fetchedJob of
-        BackendJobApplyDefs defs -> do
-          let letDefs = (++) "let "
-                      $ intercalate "; "
-                      $ map (\(name, def) -> name ++ " = " ++ def)
-                      $ defs
+      j <- liftIO $ readChan jobs
+
+      res' <- do
+          let letDef = "let " ++ bJob_cName j ++ " = " ++ bJob_cDef j
           liftIO $ ghciLog $
-            "\tletDefs: " ++ letDefs ++ "\n"
-          I.runStmt letDefs
-        j@(BackendJob{}) -> do
-          res' <- do
-            let letDefs = (++) "let "
-                        $ intercalate "; "
-                        $ map (\(name, def) -> name ++ " = " ++ def)
-                        $ bJob_defs j
+            "\t" ++ letDef ++ "\n"
+          flip MC.catch (catchDefErr j) $ do
+            I.runStmt letDef
+
             liftIO $ ghciLog $
-              "new Job: " ++ show j ++ "\n" ++
-              "\tletDefs: " ++ letDefs ++ "\n"
-            flip MC.catch (\(e :: SomeException) -> liftIO (ghciLog ("\t" ++ show e ++ "\n")) >> return (BackendJobResponse (bJob_tag j) DefsFailure Nothing)) $ do
-              I.runStmt letDefs
+              "\tletDef executed\n"
 
+            flip MC.catch (catchShowErr j) $ do
+              res <- I.eval (bJob_cName j)
               liftIO $ ghciLog $
-                "\tletDefs executed\n"
-
-              flip MC.catch (\(e :: SomeException) -> liftIO (ghciLog ("\t" ++ show e ++ "\n")) >> return (BackendJobResponse (bJob_tag j) EvalFailure Nothing)) $ do
-                res <- I.eval (bJob_eval j)
-                liftIO $ ghciLog $
-                  "\tres: " ++ show res ++ "\n"
-                return $ BackendJobResponse (bJob_tag j) Success (Just res)
-          liftIO $ writeChan resp res'
+                "\tres: " ++ show res ++ "\n"
+              return $ BackendJobResponse (bJob_resBody j (Just res))
+      liftIO $ respF res'
   ghciLog (show crash)
   return ()
+  where catchDefErr :: BackendJob -> SomeException -> I.Interpreter BackendJobResponse
+        catchDefErr j e = do
+          liftIO $ ghciLog ("\t" ++ show e ++ "\n")
+          I.runStmt $ "let " ++ bJob_cName j ++ " = undefined"
+          return $ BackendJobResponse (bJob_resBody j Nothing)
+        catchShowErr :: BackendJob -> SomeException -> I.Interpreter BackendJobResponse
+        catchShowErr j e = do
+          liftIO $ ghciLog ("\t" ++ show e ++ "\n")
+          return $ BackendJobResponse (bJob_resBody j Nothing)
 
 ghciLog :: String -> IO ()
 ghciLog str = do
-  appendFile ".ghciLog" str
+  appendFile "/tmp/fpsheet_ghci.log" str
 
 loop :: Monad m => m () -> m ()
 loop action = action >> loop action

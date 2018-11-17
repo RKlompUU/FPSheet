@@ -14,6 +14,7 @@ import Brick.Widgets.Center
 import Brick
 import Brick.Widgets.Edit
 import Brick.Types
+import Brick.BChan
 
 import Data.List
 
@@ -28,18 +29,22 @@ import Control.Monad.IO.Class
 import qualified Data.Map as M
 
 type BrickS = UISheet
-type BrickE = () -- Custom event type
+type BrickE = BackendJobResponse -- Custom event type
 type BrickN = String -- Custom resource type
 
 runTUI :: IO ()
 runTUI = do
-  initialState <- initUISheet
+  asyncResChan <- Brick.BChan.newBChan 10000
+  initialState <- initUISheet asyncResChan
   let app = App { appDraw = drawImpl,
                   appChooseCursor = chooseCursorImpl,
                   appHandleEvent = handleEventImpl,
                   appStartEvent = startEventImpl,
                   appAttrMap = attrMapImpl }
-  finalState <- defaultMain app initialState
+  finalState <- customMain (Graphics.Vty.mkVty Graphics.Vty.defaultConfig)
+                (Just asyncResChan)
+                app
+                initialState
   return ()
 
 drawImpl :: BrickS -> [Widget BrickN]
@@ -78,7 +83,7 @@ renderSelectedCell s =
                                         Nothing -> fixedWidthLeftStr (cWidth s) ""
                                         Just c -> case maybe (getText c) id $ getEval c of
                                                     ""   -> fixedWidthLeftStr (cWidth s) ""
-                                                    text -> str text
+                                                    text -> str (take (screenWidth s) text)
 
                         ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
                           hLimit (editWidth) $ renderEditor (str . flip (++) "." . intercalate "\n") True editField
@@ -139,7 +144,10 @@ uiResize width height s =
       cols = ((width - (headerWidth (s {uiRows = rows})) - 1) `div` (cWidth s + colSep)) - 1
   in s {
     uiCols = cols,
-    uiRows = rows
+    uiRows = rows,
+
+    screenWidth = width,
+    screenHeight = height
   }
 
 headerWidth :: UISheet -> Int
@@ -171,6 +179,9 @@ moveCursor toCol toRow s =
   in s { sheetCursor = (toCol', toRow'), sheetOffset = (offsetCol', offsetRow') }
 
 handleEventImpl :: BrickS -> BrickEvent BrickN BrickE -> EventM BrickN (Next BrickS)
+handleEventImpl s (AppEvent (BackendJobResponse applyRes)) = do
+  cells' <- liftIO $ execStateT applyRes (sheetCells s)
+  continue $ s { sheetCells = cells', uiMode = ModeNormal }
 handleEventImpl s (VtyEvent (EvResize width height)) = do
   continue $ uiResize width height s
 handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do

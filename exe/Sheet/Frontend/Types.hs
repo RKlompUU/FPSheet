@@ -2,7 +2,7 @@ module Sheet.Frontend.Types where
 
 import Sheet.Backend.Standard
 
-import Control.Concurrent.Chan
+import Brick.BChan
 import Brick.Widgets.Edit
 
 -- | 'UISheet' defines the spreadsheet type. The functions in this UI
@@ -17,6 +17,9 @@ data UISheet =
     uiRows :: Int,
     cWidth :: Int,
 
+    screenWidth :: Int,
+    screenHeight :: Int,
+
     uiMode :: UIMode
   }
 
@@ -27,9 +30,9 @@ data UIMode =
       cellEditorWidth :: Int
     }
 
-initUISheet :: IO UISheet
-initUISheet = do
-  sheet <- initSheet
+initUISheet :: BChan BackendJobResponse -> IO UISheet
+initUISheet asyncResChan = do
+  sheet <- initSheet (writeBChan asyncResChan)
   return $ UISheet {
     sheetCells = sheet,
     sheetCursor = (1,1),
@@ -37,5 +40,7 @@ initUISheet = do
     uiCols = 10,
     uiRows = 10,
     cWidth = 15,
+    screenWidth = 80,
+    screenHeight = 24,
     uiMode = ModeNormal
   }

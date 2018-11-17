@@ -18,6 +18,11 @@ import Sheet.Backend.SheetAbstr
 -- defined by the ith col and jth row, where i and j are \"(i, j) :: 'Pos'\"
 type Pos = (Int,Int)
 
+data CellStatus =
+  CellUndefined |
+  CellUpdating |
+  CellDefined
+
 data CellT e =
   CellT { c_str   :: String -- |User defined cell's text
         , c_res   :: Maybe e -- |The result of the last evaluation of cStr
@@ -29,7 +34,6 @@ data Sheet c =
   Sheet { s_cells :: Map Pos c
         , s_deps  :: Map Pos [Pos]
         , s_jobsChan :: ChanJobs
-        , s_resChan :: ChanResps
   }
 
 type ExprT v = String
@@ -48,25 +52,14 @@ type ChanJobs = Chan BackendJob
 type ChanResps = Chan BackendJobResponse
 
 data BackendJob =
-  BackendJobApplyDefs [(String,String)] |
   BackendJob {
-    bJob_tag :: Pos, -- The tag gets copied to the response message
+    bJob_cName :: String,
+    bJob_cDef :: String,
 
-    bJob_defs :: [(String,String)],
-    bJob_eval :: String
-  } deriving Show
+    bJob_resBody :: Maybe String -> StateTy ()
+  }
 
 data BackendJobResponse =
   BackendJobResponse {
-    bJobRes_tag :: Pos,
-
-    bJobRes_report :: JobReport,
-    bJobRes_result :: Maybe String
-  } deriving Show
-
-data JobReport =
-  Success |
-  DefsFailure |
-  EvalFailure |
-  Failure
-  deriving Show
+    bJobRes :: StateTy ()
+  }
