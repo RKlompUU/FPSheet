@@ -23,8 +23,8 @@ Not applicable yet in this Haskell rewrite.
 
 ### TODOs
 
+- Visual feedback upon cell state changes
 - Interruptable ghci commands (on escape key)
-- Asynchronous ghci job handling (the UI thread currently halts until the job is done)
 - Jump to cell, similar to vim's jump to line command (:<column><row>,   for example: :a4)
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Reading and writing of user defined save files (i.e. any filename, not just ".sheet").
