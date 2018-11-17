@@ -17,7 +17,7 @@ import Brick.Types
 import Brick.BChan
 
 import Data.List
-
+import Control.Concurrent
 
 import System.Console.Terminal.Size
 
@@ -29,7 +29,7 @@ import Control.Monad.IO.Class
 import qualified Data.Map as M
 
 type BrickS = UISheet
-type BrickE = BackendJobResponse -- Custom event type
+type BrickE = CustomEvent -- Custom event type
 type BrickN = String -- Custom resource type
 
 runTUI :: IO ()
@@ -87,7 +87,7 @@ renderSelectedCell s =
 
                         ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
                           hLimit (editWidth) $ renderEditor (str . flip (++) "." . intercalate "\n") True editField
-  in applyStandout $ translateBy (Location $ sheetCursorPos s) cellRendering
+  in cellBgAttr s p applyStandout $ translateBy (Location $ sheetCursorPos s) cellRendering
 
 editorTextRenderer :: [String] -> Widget BrickN
 editorTextRenderer lns =
@@ -98,11 +98,19 @@ renderCell :: BrickS -> Pos -> Widget BrickN
 renderCell s (col,row) =
   let (cCursor, rCursor) = sheetCursor s
       cell = M.lookup (col,row) (s_cells $ sheetCells s)
-  in case cell of
+  in cellBgAttr s (col,row) id $ case cell of
       Nothing -> fixedWidthLeftStr (cWidth s) ""
       Just c -> case getEval c of
                   Just res -> fixedWidthLeftStr (cWidth s) res
                   Nothing  -> fixedWidthLeftStr (cWidth s) (getText c)
+
+cellBgAttr s (col,row) dflt =
+  case M.lookup (col,row) (cellStatus s) of
+    Just CellSuccess  -> withAttr greenBg
+    Just CellDefined  -> withAttr brightYellowBg
+    Just CellUpdating -> withAttr yellowBg
+    Just CellFailure  -> withAttr redBg
+    Nothing           -> dflt
 
 fixedWidthLeftStr :: Int -> String -> Widget BrickN
 fixedWidthLeftStr width str =
@@ -178,10 +186,27 @@ moveCursor toCol toRow s =
                           else offsetRow
   in s { sheetCursor = (toCol', toRow'), sheetOffset = (offsetCol', offsetRow') }
 
+delayedCustomEvent :: BChan CustomEvent -> Int -> CustomEvent -> IO ()
+delayedCustomEvent chan delayMs custEv = do
+  forkIO $ do
+    threadDelay (delayMs * 1000)
+    writeBChan chan custEv
+  return ()
+
 handleEventImpl :: BrickS -> BrickEvent BrickN BrickE -> EventM BrickN (Next BrickS)
-handleEventImpl s (AppEvent (BackendJobResponse applyRes)) = do
+handleEventImpl s (AppEvent (EvNewDefinition (BackendJobResponse applyRes))) = do
   cells' <- liftIO $ execStateT applyRes (sheetCells s)
   continue $ s { sheetCells = cells', uiMode = ModeNormal }
+handleEventImpl s (AppEvent (EvVisualFeedback c stat)) = do
+  case stat of
+    CellSuccess -> liftIO $ delayedCustomEvent (custEvChan s) (showCellFeedbackTimeout s) (EvVisualFeedback c CellNoStatus)
+    CellDefined ->  liftIO $ delayedCustomEvent (custEvChan s) (showCellFeedbackTimeout s) (EvVisualFeedback c CellNoStatus)
+    CellFailure -> liftIO $ delayedCustomEvent (custEvChan s) (showCellFeedbackTimeout s) (EvVisualFeedback c CellNoStatus)
+    _ -> return ()
+  let cellStatus' = case stat of
+                      CellNoStatus -> M.delete (getCellPos c) (cellStatus s)
+                      _ -> M.insert (getCellPos c) stat (cellStatus s)
+  continue $ s { cellStatus = cellStatus' }
 handleEventImpl s (VtyEvent (EvResize width height)) = do
   continue $ uiResize width height s
 handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
@@ -203,14 +228,7 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
     VtyEvent (EvKey KDown []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor cCursor (rCursor + 1) s
-    _ -> do
-      cells' <- liftIO $ do
-        flip execStateT (sheetCells s) $ do
-          let p = (1,1)
-              p0 = (3,4)
-          getCell p >>= setText "8 - 3" >>= evalCell
-          getCell p0 >>= setText "5 * 3" >>= evalCell
-      continue (s {sheetCells = cells'})
+    _ -> continue s
 handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev = do
   case ev of
     VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
@@ -233,12 +251,20 @@ startEventImpl s = do
   return $ uiResize cols rows s
 
 attrMapImpl :: BrickS -> AttrMap
-attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue) ]
+attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue),
+                                  (redBg, bg red),
+                                  (greenBg, bg green),
+                                  (yellowBg, bg yellow),
+                                  (brightYellowBg, bg brightYellow) ]
 
 withAttrs :: [AttrName] -> Widget BrickN -> Widget BrickN
 withAttrs attrs w = foldr withAttr w attrs
 
 blueBg = attrName "blueBg"
+redBg = attrName "redBg"
+greenBg = attrName "greenBg"
+brightYellowBg = attrName "brightYellowBg"
+yellowBg = attrName "yellowBg"
 
 applyStandout :: Widget BrickN -> Widget BrickN
 applyStandout w =

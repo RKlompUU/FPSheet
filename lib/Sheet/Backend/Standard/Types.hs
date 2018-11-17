@@ -19,9 +19,11 @@ import Sheet.Backend.SheetAbstr
 type Pos = (Int,Int)
 
 data CellStatus =
-  CellUndefined |
-  CellUpdating |
-  CellDefined
+    CellSuccess
+  | CellDefined
+  | CellUpdating
+  | CellFailure
+  | CellNoStatus
 
 data CellT e =
   CellT { c_str   :: String -- |User defined cell's text
@@ -34,6 +36,7 @@ data Sheet c =
   Sheet { s_cells :: Map Pos c
         , s_deps  :: Map Pos [Pos]
         , s_jobsChan :: ChanJobs
+        , s_visualFeedback :: c -> CellStatus -> IO ()
   }
 
 type ExprT v = String
@@ -56,10 +59,15 @@ data BackendJob =
     bJob_cName :: String,
     bJob_cDef :: String,
 
-    bJob_resBody :: Maybe String -> StateTy ()
+    bJob_resBody :: JobResCode -> Maybe String -> StateTy ()
   }
 
 data BackendJobResponse =
   BackendJobResponse {
     bJobRes :: StateTy ()
   }
+
+data JobResCode =
+  JobDefFailure |
+  JobShowFailure |
+  JobSuccess

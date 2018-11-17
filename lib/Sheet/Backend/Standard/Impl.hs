@@ -54,14 +54,21 @@ instance Cell S StateTy C E VAR VAL Pos where
     if (c_uFlag c)
       then return ()
       else do
+        feedback <- s_visualFeedback <$> get
+        liftIO $ feedback c CellUpdating
         -- Set uFlag to true, to prevent infinite recursion into cyclic cell dependencies
         setCell (c { c_uFlag = True })
 
         jobChan <- s_jobsChan <$> get
         let e = getText c
         let j = BackendJob (posToRef cPos) e $
-                  \res -> do
-                    getCell cPos >>= \c' -> setCell (c' { c_res = res })
+                  \resCode res -> do
+                    c' <- getCell cPos
+                    setCell (c' { c_res = res })
+                    case resCode of
+                      JobDefFailure -> liftIO $ feedback c' CellFailure
+                      JobShowFailure -> liftIO $ feedback c' CellDefined
+                      _ -> liftIO $ feedback c' CellSuccess
                     return ()
 
         liftIO $ writeChan jobChan j
@@ -199,12 +206,12 @@ subLists i xs =
   let is = [0,i..(length xs - 1)]
   in map (\i' -> sliceList i' (i'+i-1) xs) is
 
-initSheet :: (BackendJobResponse -> IO ()) -> IO S
-initSheet asyncResFunc = do
+initSheet :: (BackendJobResponse -> IO ()) -> (C -> CellStatus -> IO ()) -> IO S
+initSheet asyncResFunc visualFeedbackFunc = do
   jobChan <- newChan
   resChan <- newChan
   forkIO (ghciThread jobChan asyncResFunc)
-  return $ Sheet M.empty M.empty jobChan
+  return $ Sheet M.empty M.empty jobChan visualFeedbackFunc
 
 ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
 ghciThread jobs respF = do
@@ -227,7 +234,7 @@ ghciThread jobs respF = do
               res <- I.eval (bJob_cName j)
               liftIO $ ghciLog $
                 "\tres: " ++ show res ++ "\n"
-              return $ BackendJobResponse (bJob_resBody j (Just res))
+              return $ BackendJobResponse (bJob_resBody j JobSuccess (Just res))
       liftIO $ respF res'
   ghciLog (show crash)
   return ()
@@ -235,11 +242,11 @@ ghciThread jobs respF = do
         catchDefErr j e = do
           liftIO $ ghciLog ("\t" ++ show e ++ "\n")
           I.runStmt $ "let " ++ bJob_cName j ++ " = undefined"
-          return $ BackendJobResponse (bJob_resBody j Nothing)
+          return $ BackendJobResponse (bJob_resBody j JobDefFailure Nothing)
         catchShowErr :: BackendJob -> SomeException -> I.Interpreter BackendJobResponse
         catchShowErr j e = do
           liftIO $ ghciLog ("\t" ++ show e ++ "\n")
-          return $ BackendJobResponse (bJob_resBody j Nothing)
+          return $ BackendJobResponse (bJob_resBody j JobShowFailure Nothing)
 
 ghciLog :: String -> IO ()
 ghciLog str = do

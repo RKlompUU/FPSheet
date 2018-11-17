@@ -23,7 +23,6 @@ Not applicable yet in this Haskell rewrite.
 
 ### TODOs
 
-- Visual feedback upon cell state changes
 - Interruptable ghci commands (on escape key)
 - Jump to cell, similar to vim's jump to line command (:<column><row>,   for example: :a4)
 - Copy pasting cells (properly handling loose and stuck cell references)
