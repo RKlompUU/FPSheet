@@ -36,6 +36,10 @@ data UIMode =
       cellEditor :: Editor String String,
       cellEditorWidth :: Int
     }
+  | ModeCommand {
+      cmdEditor :: Editor String String,
+      cmdEditorWidth :: Int
+  }
 
 data CustomEvent =
   EvNewDefinition BackendJobResponse |

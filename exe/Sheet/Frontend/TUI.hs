@@ -26,6 +26,8 @@ import qualified Data.Text as T
 import System.Exit
 import Control.Monad.IO.Class
 
+import Sheet.Frontend.CmdParser
+
 import qualified Data.Map as M
 
 type BrickS = UISheet
@@ -69,7 +71,9 @@ drawImpl s =
        (rowsHeader <+> vBorder)) <+>
       (colsHeader <=>
        hBorder <=>
-       vBox (map (hBox . insertColSeps . map (renderCell s)) cellRows))]
+       vBox (map (hBox . insertColSeps . map (renderCell s)) cellRows))
+       <=>
+       renderFooter s]
 
 insertColSeps :: [Widget BrickN] -> [Widget BrickN]
 insertColSeps = intercalate [str $ take colSep $ repeat ' '] . map (: [])
@@ -79,15 +83,21 @@ renderSelectedCell s =
   let p@(cCursor, rCursor) = sheetCursor s
       cell = M.lookup p (s_cells $ sheetCells s)
       cellRendering = case uiMode s of
-                        ModeNormal -> case cell of
+                        ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
+                          hLimit (editWidth) $ renderEditor (str . flip (++) "." . intercalate "\n") True editField
+                        _ -> case cell of
                                         Nothing -> fixedWidthLeftStr (cWidth s) ""
                                         Just c -> case maybe (getText c) id $ getEval c of
                                                     ""   -> fixedWidthLeftStr (cWidth s) ""
                                                     text -> str (take (screenWidth s) text)
-
-                        ModeEdit{cellEditor = editField, cellEditorWidth = editWidth} ->
-                          hLimit (editWidth) $ renderEditor (str . flip (++) "." . intercalate "\n") True editField
   in cellBgAttr s p applyStandout $ translateBy (Location $ sheetCursorPos s) cellRendering
+
+renderFooter :: BrickS -> Widget BrickN
+renderFooter s =
+  case uiMode s of
+    ModeCommand{cmdEditor = editField, cmdEditorWidth = editWidth} ->
+      str ":" <+> hLimit (editWidth) (renderEditor (str . flip (++) "." . intercalate "\n") True editField)
+    _ -> emptyWidget
 
 editorTextRenderer :: [String] -> Widget BrickN
 editorTextRenderer lns =
@@ -215,7 +225,11 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
     VtyEvent (EvKey KEnter []) -> do
       let (col,row) = sheetCursor s
           str = maybe "" getText $ M.lookup (col,row) (s_cells $ sheetCells s)
-      continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str, cellEditorWidth = max (cWidth s) (length str + 2)} }
+      continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str,
+                                        cellEditorWidth = max (cWidth s) (length str + 2)} }
+    VtyEvent (EvKey (KChar ':') []) -> do
+      continue $ s { uiMode = ModeCommand {cmdEditor = editor "Cell editor" (Just 1) "",
+                                           cmdEditorWidth = 2} }
     VtyEvent (EvKey KRight []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor (cCursor + 1) rCursor s
@@ -243,12 +257,30 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev
       e' <- handleEditorEvent vtEv editField
       continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
     _ -> continue s
+handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) ev = do
+  case ev of
+    VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
+    VtyEvent (EvKey KEnter []) -> do
+      let str = intercalate "\n" $ getEditContents editField
+      s' <- liftIO $ execCmd str s
+      continue $ s' {uiMode = ModeNormal}
+    VtyEvent vtEv -> do
+      e' <- handleEditorEvent vtEv editField
+      continue $ s { uiMode = m {cmdEditor = e', cmdEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
+    _ -> continue s
 
 startEventImpl :: BrickS -> EventM BrickN BrickS
 startEventImpl s = do
   (cols, rows) <- liftIO $ maybe (80,24) (\w -> (width w, height w))
                         <$> size
   return $ uiResize cols rows s
+
+execCmd :: String -> BrickS -> IO BrickS
+execCmd str s = do
+  case parseCmd str of
+    CmdMoveCursor col row -> return $ moveCursor col row s
+    CmdInvalid -> return s
+
 
 attrMapImpl :: BrickS -> AttrMap
 attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue),

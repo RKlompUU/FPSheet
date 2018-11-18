@@ -57,7 +57,7 @@ instance Cell S StateTy C E VAR VAL Pos where
         feedback <- s_visualFeedback <$> get
         liftIO $ feedback c CellUpdating
         -- Set uFlag to true, to prevent infinite recursion into cyclic cell dependencies
-        setCell (c { c_uFlag = True })
+        setCell (c { c_uFlag = True, c_res = Nothing })
 
         jobChan <- s_jobsChan <$> get
         let e = getText c
@@ -221,6 +221,8 @@ ghciThread jobs respF = do
       j <- liftIO $ readChan jobs
 
       res' <- do
+          liftIO $ ghciLog $
+            "------------------------\nNew job:\n"
           let letDef = "let " ++ bJob_cName j ++ " = " ++ bJob_cDef j
           liftIO $ ghciLog $
             "\t" ++ letDef ++ "\n"
