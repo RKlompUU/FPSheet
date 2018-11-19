@@ -19,7 +19,9 @@ Run: stack install
 
 ### Usage
 
-Not applicable yet in this Haskell rewrite.
+Run: stack exec FPSheet-exe
+
+Loading and saving sheets is not yet possible.
 
 ### TODOs
 
