@@ -203,6 +203,7 @@ delayedCustomEvent chan delayMs custEv = do
     writeBChan chan custEv
   return ()
 
+-- |-
 handleEventImpl :: BrickS -> BrickEvent BrickN BrickE -> EventM BrickN (Next BrickS)
 handleEventImpl s (AppEvent (EvNewDefinition (BackendJobResponse applyRes))) = do
   cells' <- liftIO $ execStateT applyRes (sheetCells s)
@@ -217,19 +218,23 @@ handleEventImpl s (AppEvent (EvVisualFeedback c stat)) = do
                       CellNoStatus -> M.delete (getCellPos c) (cellStatus s)
                       _ -> M.insert (getCellPos c) stat (cellStatus s)
   continue $ s { cellStatus = cellStatus' }
+------
 handleEventImpl s (VtyEvent (EvResize width height)) = do
   continue $ uiResize width height s
+------
 handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
+  let enterCmdEditor = continue $ s {
+    uiMode = ModeCommand {cmdEditor = editor "Cell editor" (Just 1) "",
+    cmdEditorWidth = 2}
+  }
   case ev of
-    VtyEvent (EvKey KEsc []) -> halt s
     VtyEvent (EvKey KEnter []) -> do
       let (col,row) = sheetCursor s
           str = maybe "" getText $ M.lookup (col,row) (s_cells $ sheetCells s)
       continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str,
                                         cellEditorWidth = max (cWidth s) (length str + 2)} }
-    VtyEvent (EvKey (KChar ':') []) -> do
-      continue $ s { uiMode = ModeCommand {cmdEditor = editor "Cell editor" (Just 1) "",
-                                           cmdEditorWidth = 2} }
+    VtyEvent (EvKey (KChar ';') []) -> enterCmdEditor
+    VtyEvent (EvKey (KChar ':') []) -> enterCmdEditor
     VtyEvent (EvKey KRight []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor (cCursor + 1) rCursor s
@@ -243,6 +248,7 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor cCursor (rCursor + 1) s
     _ -> continue s
+------
 handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev = do
   case ev of
     VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
@@ -257,13 +263,22 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev
       e' <- handleEditorEvent vtEv editField
       continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
     _ -> continue s
+------
 handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) ev = do
   case ev of
     VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
     VtyEvent (EvKey KEnter []) -> do
       let str = intercalate "\n" $ getEditContents editField
-      s' <- liftIO $ execCmd str s
-      continue $ s' {uiMode = ModeNormal}
+          setSheetModeNormal s = s {uiMode = ModeNormal}
+      case parseCmd str of
+        CmdMoveCursor col row -> continue
+                               $ setSheetModeNormal
+                               $ moveCursor col row s
+        CmdQuit -> halt s
+        CmdInvalid -> continue
+                    $ setSheetModeNormal s
+      -- fmap (continue {uiMode = ModeNormal}) s'
+      -- continue $ s {uiMode = ModeNormal}
     VtyEvent vtEv -> do
       e' <- handleEditorEvent vtEv editField
       continue $ s { uiMode = m {cmdEditor = e', cmdEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
@@ -274,13 +289,6 @@ startEventImpl s = do
   (cols, rows) <- liftIO $ maybe (80,24) (\w -> (width w, height w))
                         <$> size
   return $ uiResize cols rows s
-
-execCmd :: String -> BrickS -> IO BrickS
-execCmd str s = do
-  case parseCmd str of
-    CmdMoveCursor col row -> return $ moveCursor col row s
-    CmdInvalid -> return s
-
 
 attrMapImpl :: BrickS -> AttrMap
 attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue),

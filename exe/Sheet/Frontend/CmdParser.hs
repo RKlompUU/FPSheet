@@ -7,7 +7,8 @@ import Sheet.Backend.Standard
 
 data Command =
   CmdInvalid |
-  CmdMoveCursor Int Int
+  CmdMoveCursor Int Int |
+  CmdQuit
 
 type CmdParser a = Parser Char a
 
@@ -19,4 +20,5 @@ parseCmd cmd =
 
 cmdParser :: CmdParser Command
 cmdParser =
-  CmdMoveCursor <$> pCol <*> pRow
+  CmdMoveCursor <$> pCol <*> pRow <|>
+  CmdQuit <$ symbol 'q'
