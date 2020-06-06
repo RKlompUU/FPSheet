@@ -30,12 +30,17 @@ library
       Paths_FPSheet
       Sheet.Backend.SheetAbstr
       Sheet.Backend.Standard.Types
+      Sheet.Backend.Standard.Saves
       Sheet.Backend.Standard.Impl
   hs-source-dirs:
       lib
   build-depends:
       base >=4.7 && <5,
       mtl,
+      lens,
+      text,
+      bytestring,
+      xlsx,
       containers,
       hint >= 0.9.0,
       uu-tc,
@@ -60,6 +65,7 @@ executable FPSheet-exe
       base >=4.7 && <5,
       containers,
       brick,
+      aeson,
       vty,
       terminal-size,
       text,

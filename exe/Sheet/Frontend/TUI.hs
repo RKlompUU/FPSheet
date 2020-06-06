@@ -274,6 +274,11 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) 
         CmdMoveCursor col row -> continue
                                $ setSheetModeNormal
                                $ moveCursor col row s
+        CmdImport simpleImport f -> do
+          cells' <- liftIO $ do
+            flip execStateT (sheetCells s) $ do
+              load f simpleImport
+          continue $ s { sheetCells = cells', uiMode = ModeNormal }
         CmdQuit -> halt s
         CmdInvalid -> continue
                     $ setSheetModeNormal s

@@ -30,6 +30,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m  c e var va
   -- | 'setCell' sets a 'Cell' c in the spreadsheet at the 'Pos' that must be retrievable from within c.
   -- If a 'Cell' at the given 'Pos' was already present, it is overwritten.
   setCell :: c -> m c
+  load :: String -> Bool -> m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
 class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var val pos | c -> e, c -> var, var -> m, e -> m where

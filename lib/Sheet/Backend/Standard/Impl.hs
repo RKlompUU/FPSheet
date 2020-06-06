@@ -10,6 +10,7 @@ module Sheet.Backend.Standard.Impl (
   module Sheet.Backend.Standard.Types,
 ) where
 
+import Sheet.Backend.Standard.Saves
 
 import qualified ParseLib.Simple as SimpleP
 
@@ -47,6 +48,11 @@ instance Spreadsheet S StateTy C E VAR VAL Pos where
   getSetCells = do
     cells <- s_cells <$> get
     return $ M.elems cells
+  load f simpleImport = do
+    c <- liftIO $ loadCells f simpleImport
+    s <- get
+    put $ s {s_cells = c}
+    return ()
 
 instance Cell S StateTy C E VAR VAL Pos where
   evalCell c = do
