@@ -36,6 +36,7 @@ While in normal mode, press:
 
 ### TODOs
 
+- Figure out a way to get something like [a1..a4] to evaluate to [a1,a2,a3,a4]
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Exporting to excell savefiles
 - Undo & redo
