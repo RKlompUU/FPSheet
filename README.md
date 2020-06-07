@@ -15,20 +15,28 @@ Interestingly, since Haskell is lazily evaluated, and since Haskell regards func
 
 ### Installation
 
-Run: stack install
+Run: `stack install`
 
 ### Usage
 
-Run: stack exec FPSheet-exe
+Run: `stack exec FPSheet-exe`
 
-Loading and saving sheets is not yet possible.
+The program has vim-like modes:
+- normal mode for moving around
+- edit mode for editing the definition of a cell
+
+While in normal mode, press:
+- `:q` to exit.
+- `:w <filename>` to write the sheet to disk
+- `:r <filename>` to read a sheet from disk
+- `:i <filename>` to import an .xlsx file (imports from cell values)
+- `:I <filename>` to import an .xlsx file (imports from cell formulas if set, falls back to cell values for cells that do not have a formula definition set)
+- `:<column><row>` to jump to `column,row` (e.g. `a10`, `azzz4050`, etc.)
 
 ### TODOs
 
 - Interruptable ghci commands (on escape key)
-- Jump to cell, similar to vim's jump to line command (:<column><row>,   for example: :a4)
 - Copy pasting cells (properly handling loose and stuck cell references)
-- Reading and writing of user defined save files (i.e. any filename, not just ".sheet").
-- Exporting to and importing from excell savefiles
+- Exporting to excell savefiles
 - Undo & redo
 - Many many more vital features (aka: TODO: write these out)
