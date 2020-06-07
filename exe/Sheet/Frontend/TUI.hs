@@ -228,6 +228,11 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
     cmdEditorWidth = 2}
   }
   case ev of
+    VtyEvent (EvKey KEsc []) -> do
+      liftIO $ do
+        flip execStateT (sheetCells s) $ do
+          interrupt
+      continue $ s
     VtyEvent (EvKey KEnter []) -> do
       let (col,row) = sheetCursor s
           str = maybe "" getText $ M.lookup (col,row) (s_cells $ sheetCells s)

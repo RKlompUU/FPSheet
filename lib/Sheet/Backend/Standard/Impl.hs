@@ -68,6 +68,14 @@ instance Spreadsheet S StateTy C E VAR VAL Pos where
   reval = do
     s <- get
     forM_ (M.keys (s_cells s)) (\p -> getCell p >>= evalCell)
+  interrupt = do
+    s <- get
+    liftIO $ throwTo (s_ghciThread s) InterpreterInterrupt
+
+data Interrupt = InterpreterInterrupt
+    deriving Show
+
+instance Exception Interrupt
 
 instance Cell S StateTy C E VAR VAL Pos where
   evalCell c = do
@@ -231,34 +239,36 @@ initSheet :: (BackendJobResponse -> IO ()) -> (C -> CellStatus -> IO ()) -> IO S
 initSheet asyncResFunc visualFeedbackFunc = do
   jobChan <- newChan
   resChan <- newChan
-  forkIO (ghciThread jobChan asyncResFunc)
-  return $ Sheet M.empty M.empty jobChan visualFeedbackFunc
+  ghciThreadID <- forkIO (ghciThread jobChan asyncResFunc)
+  return $ Sheet M.empty M.empty jobChan visualFeedbackFunc ghciThreadID
+
 
 ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
 ghciThread jobs respF = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     loop $ do
-      j <- liftIO $ readChan jobs
+      flip MC.catch catchInterrupt $ do
+        j <- liftIO $ readChan jobs
 
-      res' <- do
-          liftIO $ ghciLog $
-            "------------------------\nNew job:\n"
-          let letDef = "let " ++ bJob_cName j ++ " = " ++ bJob_cDef j
-          liftIO $ ghciLog $
-            "\t" ++ letDef ++ "\n"
-          flip MC.catch (catchDefErr j) $ do
-            I.runStmt letDef
-
+        res' <- do
             liftIO $ ghciLog $
-              "\tletDef executed\n"
+              "------------------------\nNew job:\n"
+            let letDef = "let " ++ bJob_cName j ++ " = " ++ bJob_cDef j
+            liftIO $ ghciLog $
+              "\t" ++ letDef ++ "\n"
+            flip MC.catch (catchDefErr j) $ do
+              I.runStmt letDef
 
-            flip MC.catch (catchShowErr j) $ do
-              res <- I.eval (bJob_cName j)
               liftIO $ ghciLog $
-                "\tres: " ++ show res ++ "\n"
-              return $ BackendJobResponse (bJob_resBody j JobSuccess (Just res))
-      liftIO $ respF res'
+                "\tletDef executed\n"
+
+              flip MC.catch (catchShowErr j) $ do
+                res <- I.eval (bJob_cName j)
+                liftIO $ ghciLog $
+                  "\tres: " ++ show res ++ "\n"
+                return $ BackendJobResponse (bJob_resBody j JobSuccess (Just res))
+        liftIO $ respF res'
   ghciLog (show crash)
   return ()
   where catchDefErr :: BackendJob -> SomeException -> I.Interpreter BackendJobResponse
@@ -270,6 +280,8 @@ ghciThread jobs respF = do
         catchShowErr j e = do
           liftIO $ ghciLog ("\t" ++ show e ++ "\n")
           return $ BackendJobResponse (bJob_resBody j JobShowFailure Nothing)
+        catchInterrupt :: Interrupt -> I.Interpreter ()
+        catchInterrupt e = return ()
 
 ghciLog :: String -> IO ()
 ghciLog str = do

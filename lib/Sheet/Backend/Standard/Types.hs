@@ -6,6 +6,7 @@ Stability   : experimental
 -}
 module Sheet.Backend.Standard.Types where
 
+import Control.Concurrent
 import qualified GHC.Generics as GHC
 import Data.Aeson
 import Data.Map (Map)
@@ -40,6 +41,7 @@ data Sheet c =
         , s_deps  :: Map Pos [Pos]
         , s_jobsChan :: ChanJobs
         , s_visualFeedback :: c -> CellStatus -> IO ()
+        , s_ghciThread :: ThreadId
   }
 
 type ExprT v = String

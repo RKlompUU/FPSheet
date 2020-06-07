@@ -38,6 +38,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m  c e var va
   save :: String -> m ()
   -- | 'load' loads the sheet state from disk (in FPSheet's own format)
   load :: String -> m ()
+  interrupt :: m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
 class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var val pos | c -> e, c -> var, var -> m, e -> m where
