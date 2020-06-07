@@ -32,10 +32,10 @@ While in normal mode, press:
 - `:i <filename>` to import an .xlsx file (imports from cell values)
 - `:I <filename>` to import an .xlsx file (imports from cell formulas if set, falls back to cell values for cells that do not have a formula definition set)
 - `:<column><row>` to jump to `column,row` (e.g. `a10`, `azzz4050`, etc.)
+- `<ESCAPE>` to interrupt the ghci backend (useful for when you accidentally defined a cell that cannot finish evaluation)
 
 ### TODOs
 
-- Interruptable ghci commands (on escape key)
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Exporting to excell savefiles
 - Undo & redo
