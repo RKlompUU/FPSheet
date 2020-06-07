@@ -48,11 +48,26 @@ instance Spreadsheet S StateTy C E VAR VAL Pos where
   getSetCells = do
     cells <- s_cells <$> get
     return $ M.elems cells
-  load f simpleImport = do
-    c <- liftIO $ loadCells f simpleImport
+  importFile f simpleImport = do
+    c <- liftIO $ importCells f simpleImport
     s <- get
     put $ s {s_cells = c}
+    reval
     return ()
+  save f = do
+    s <- get
+    liftIO $ saveSheet s f
+  load f = do
+    res <- liftIO $ loadSheet f
+    case res of
+      Just save -> do
+        s <- get
+        put $ s { s_cells = save_cells save, s_deps = save_deps save }
+        reval
+      Nothing -> return ()
+  reval = do
+    s <- get
+    forM_ (M.keys (s_cells s)) (\p -> getCell p >>= evalCell)
 
 instance Cell S StateTy C E VAR VAL Pos where
   evalCell c = do

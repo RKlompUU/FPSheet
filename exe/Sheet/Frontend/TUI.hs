@@ -277,7 +277,17 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) 
         CmdImport simpleImport f -> do
           cells' <- liftIO $ do
             flip execStateT (sheetCells s) $ do
-              load f simpleImport
+              importFile f simpleImport
+          continue $ s { sheetCells = cells', uiMode = ModeNormal }
+        CmdSave f -> do
+          liftIO $ do
+            flip execStateT (sheetCells s) $ do
+              save f
+          continue $ s { uiMode = ModeNormal }
+        CmdLoad f -> do
+          cells' <- liftIO $ do
+            flip execStateT (sheetCells s) $ do
+              load f
           continue $ s { sheetCells = cells', uiMode = ModeNormal }
         CmdQuit -> halt s
         CmdInvalid -> continue

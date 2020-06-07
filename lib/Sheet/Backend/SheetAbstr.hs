@@ -30,7 +30,14 @@ class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m  c e var va
   -- | 'setCell' sets a 'Cell' c in the spreadsheet at the 'Pos' that must be retrievable from within c.
   -- If a 'Cell' at the given 'Pos' was already present, it is overwritten.
   setCell :: c -> m c
-  load :: String -> Bool -> m ()
+  -- | 'reval' reevalutes all Cells
+  reval :: m ()
+  -- | 'importFile' loads an external format from disk (currently only supports .xlsx)
+  importFile :: String -> Bool -> m ()
+  -- | 'save' saves the sheet state to disk (in FPSheet's own format)
+  save :: String -> m ()
+  -- | 'load' loads the sheet state from disk (in FPSheet's own format)
+  load :: String -> m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
 class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var val pos | c -> e, c -> var, var -> m, e -> m where
@@ -45,6 +52,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var
   getEval :: c -> Maybe e
   -- | 'getText' returns the text contents of a 'Cell'.
   getText :: c -> String
+  -- | 'setText' sets textual definition of the cell (note: this does not trigger evaluation)
   setText :: String -> c -> m c
   -- | 'getCellPos' returns the position on the sheet of the cell
   getCellPos :: c -> pos

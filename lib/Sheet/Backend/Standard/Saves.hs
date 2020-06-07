@@ -14,8 +14,21 @@ import Data.Tuple
 
 import Control.Applicative
 
-loadCells :: String -> Bool -> IO (M.Map Pos C)
-loadCells f simpleImport = do
+import Data.Aeson
+import qualified Data.Text.Lazy.Encoding as T
+import qualified Data.Text.Lazy.IO as T
+
+saveSheet :: Sheet C -> String -> IO ()
+saveSheet s f = do
+  let save = Save (s_cells s) (s_deps s)
+  T.writeFile f $ T.decodeUtf8 . encode $ save
+
+loadSheet :: String -> IO (Maybe Save)
+loadSheet f = do
+  decode . T.encodeUtf8 <$> T.readFile f
+
+importCells :: String -> Bool -> IO (M.Map Pos C)
+importCells f simpleImport = do
   xlsxC <- loadXlsxCells f
   return
     $ M.mapKeys swap

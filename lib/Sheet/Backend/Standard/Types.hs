@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 {-|
 Module      : Sheet.Backend.Types
 Description : A Sheet datatype, that contains a grid of cells
@@ -5,6 +6,8 @@ Stability   : experimental
 -}
 module Sheet.Backend.Standard.Types where
 
+import qualified GHC.Generics as GHC
+import Data.Aeson
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Map as M
@@ -30,7 +33,7 @@ data CellT e =
         , c_res   :: Maybe e -- |The result of the last evaluation of cStr
         , c_uFlag :: Bool -- |Cell has changed, used to check if an input field needs to be refreshed by the frontend
         , c_pos   :: Pos
-  } deriving (Show)
+  } deriving (GHC.Generic, Show, FromJSON, ToJSON)
 
 data Sheet c =
   Sheet { s_cells :: Map Pos c
@@ -48,6 +51,11 @@ type VAL = String
 type E = ExprT VAR
 type C = CellT E
 type S = Sheet C
+
+data Save =
+  Save { save_cells :: Map Pos C
+       , save_deps  :: Map Pos [Pos] }
+  deriving (GHC.Generic, FromJSON, ToJSON)
 
 type StateTy = StateT S IO
 

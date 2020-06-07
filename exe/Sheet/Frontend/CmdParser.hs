@@ -10,6 +10,7 @@ data Command =
   CmdMoveCursor Int Int |
   CmdImport Bool String |
   CmdSave String |
+  CmdLoad String |
   CmdQuit
 
 type CmdParser a = Parser Char a
@@ -25,15 +26,16 @@ cmdParser =
   CmdMoveCursor <$> pCol <*> pRow <|>
   CmdImport <$> ((=='i') <$> (symbol 'i' <|> symbol 'I')) <*> (pWhitespace *> pFilename) <|>
   CmdSave <$> (symbol 'w' *> pWhitespace *> pFilename) <|>
+  CmdLoad <$> (symbol 'r' *> pWhitespace *> pFilename) <|>
   CmdQuit <$ symbol 'q'
 
 pWhitespace :: CmdParser ()
 pWhitespace =
   let wspace = [' ','\t','\n','\r']
-  in const () <$> greedy (satisfy (flip elem wspace))
+  in const () <$> greedy1 (satisfy (flip elem wspace))
 
 pFilename :: CmdParser String
 pFilename =
   let fchars = ['a'..'z'] ++ ['A'..'Z'] ++ ['.', '/']
-  in greedy (satisfy (flip elem fchars))
+  in greedy1 (satisfy (flip elem fchars))
 
