@@ -14,3 +14,4 @@ cabal.config
 .web-log
 .sheet
 .ghciLog
+*.fps
