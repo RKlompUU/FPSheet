@@ -42,7 +42,7 @@ import Language.Haskell.Exts.Util
 
 import Control.Monad.Catch as MC
 
-instance Spreadsheet S StateTy C E VAR VAL Pos where
+instance Spreadsheet S StateTy C E VAR VAL (Dep Pos) Pos where
   getCell p = do
     cells <- s_cells <$> get
     return (maybe (newCell p) id (M.lookup p cells))
@@ -67,7 +67,7 @@ instance Spreadsheet S StateTy C E VAR VAL Pos where
     case res of
       Just save -> do
         s <- get
-        put $ s { s_cells = save_cells save, s_deps = save_deps save }
+        put $ s { s_cells = save_cells save }
         reval
       Nothing -> return ()
   reval = do
@@ -82,7 +82,7 @@ data Interrupt = InterpreterInterrupt
 
 instance Exception Interrupt
 
-instance Cell S StateTy C E VAR VAL Pos where
+instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
   evalCell c = do
     let cPos = getCellPos c
     if (c_uFlag c)
@@ -98,7 +98,7 @@ instance Cell S StateTy C E VAR VAL Pos where
                       <$> map (posToRef . getCellPos)
                       <$> filter (not . null . getText)
                       <$> getSetCells
-        let e = preprocessExprStr (getText c) rangeableCells
+        let (_, e) = preprocessExprStr (getText c) rangeableCells
         let j = BackendJob (posToRef cPos) e $
                   \resCode res -> do
                     c' <- getCell cPos
@@ -111,24 +111,54 @@ instance Cell S StateTy C E VAR VAL Pos where
 
         liftIO $ writeChan jobChan j
 
-        deps <- getCellDeps (getCellPos c)
-        mapM_ (\p -> getCell p >>= evalCell) deps
+        deps <- getCellDeps c
+        mapM_ evalCell deps
 
         getCell cPos >>= \c' -> setCell (c' { c_uFlag = False })
         return ()
   getEval = c_res
   getText = c_str
   setText str c = do
-    let str' = preprocessExprStr str Nothing
+    rangeableCells <- Just
+                  <$> map (posToRef . getCellPos)
+                  <$> filter (not . null . getText)
+                  <$> getSetCells
+    let (oldRangeDeps, _) = preprocessExprStr (c_str c) rangeableCells
+    let (newRangeDeps, str') = preprocessExprStr str rangeableCells
     let oldDeps = S.toList $ refsInExpr (c_str c)
         newDeps = S.toList $ refsInExpr str'
-        expired = oldDeps \\ newDeps
-        appended = newDeps \\ oldDeps
-    mapM_ (delCellDep (c_pos c)) expired
-    mapM_ (addCellDep (c_pos c)) appended
+        expired = map DepPos (oldDeps \\ newDeps)
+               ++ (oldRangeDeps \\ newRangeDeps)
+        appended = map DepPos (newDeps \\ oldDeps)
+                ++ (newRangeDeps \\ oldRangeDeps)
+    mapM_ (delCellDep c) expired
+    mapM_ (addCellDep c) appended
     setCell (c {c_str = str})
   getCellPos = c_pos
   newCell p = CellT "" Nothing False p
+  addCellDep c dep = do
+    s <- get
+    let deps = maybe [] id (M.lookup (c_pos c) (s_deps s))
+    put $ s {s_deps = M.insert (c_pos c) (dep:deps) (s_deps s)}
+  delCellDep c dep = do
+    s <- get
+    let deps = maybe [] id (M.lookup (c_pos c) (s_deps s))
+    put $ s {s_deps = M.insert (c_pos c) (filter (/= dep) deps) (s_deps s)}
+  getCellDeps c = do
+    s <- get
+    mapM getCell $
+      nub $
+      M.keys $
+      M.filter (any (posInDep (c_pos c))) (s_deps s)
+
+posInDep :: Pos -> Dep Pos -> Bool
+posInDep p (DepPos depAt) = p == depAt
+posInDep p (DepRange depFrom depTo) =
+  col p >= col depFrom && col p <= col depTo &&
+  row p >= row depFrom && row p <= row depTo
+posInDep p (DepRangeDown depFrom) =
+  col p == col depFrom &&
+  row p >= row depFrom
 
 instance Var VAR Pos where
   posToRef (c,r) =
@@ -144,25 +174,6 @@ instance Expr S StateTy E VAR VAL Pos where
           $ S.map fv2Pos fv
         where fv2Pos (P.Ident _ str) = parsePos str
               fv2Pos (P.Symbol _ _) = Nothing
-
-
-addCellDep :: Pos -> Pos -> StateTy ()
-addCellDep p1 p2 = do
-  deps <- getCellDeps p2
-  s <- get
-  put $ s {s_deps = M.insert p2 (nub $ p1:deps) (s_deps s)}
-
-delCellDep :: Pos -> Pos -> StateTy ()
-delCellDep p1 p2 = do
-  deps <- getCellDeps p2
-  s <- get
-  put $ s {s_deps = M.insert p2 (filter (/= p1) deps) (s_deps s)}
-
-
-getCellDeps :: Pos -> StateTy [Pos]
-getCellDeps p = do
-  s <- get
-  return $ maybe [] id (M.lookup p (s_deps s))
 
 
 type SParser a = SimpleP.Parser Char a
@@ -304,15 +315,15 @@ loop :: Monad m => m () -> m ()
 loop action = action >> loop action
 
 
-preprocessExprStr :: String -> Maybe [String] -> String
+preprocessExprStr :: String -> Maybe [String] -> ([Dep Pos], String)
 preprocessExprStr eStr rangeableCells =
   case P.parseExp eStr of
-    P.ParseFailed _ _ -> eStr
+    P.ParseFailed _ _ -> ([], eStr)
     P.ParseOk p ->
-      let p' = preprocessExpr p [] rangeableCells
-      in P.prettyPrint p'
+      let (dependencyRanges, p') = preprocessExpr p [] rangeableCells
+      in (dependencyRanges, P.prettyPrint p')
 
-preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> Maybe [String] -> P.Exp P.SrcSpanInfo
+preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> Maybe [String] -> ([Dep Pos], P.Exp P.SrcSpanInfo)
 preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree rangeableCells =
   let posFrom = posRef enumFrom
       posTo   = posRef enumTo
@@ -328,33 +339,59 @@ preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree rangeableCells =
                     else Just r'
           else Nothing
   in if isJust rangeCells
-      then P.List P.noSrcSpan
+      then (,) [DepRange (fromJust posFrom) (fromJust posTo)]
+         $ P.List P.noSrcSpan
          $ map (P.Var P.noSrcSpan . P.UnQual P.noSrcSpan . P.Ident P.noSrcSpan)
          $ fromJust rangeCells
-      else e
+      else ([], e)
+preprocessExpr e@(P.EnumFrom l enumFrom) unfree rangeableCells =
+  let posFrom = posRef enumFrom
+      rangeCells =
+        if isJust posFrom && isJust rangeableCells
+          then let maxPos = maximum
+                          $ (:) (fromJust posFrom)
+                          $ filter (\(c,_) -> c == (col . fromJust) posFrom)
+                          $ map (fromJust . parsePos) (fromJust rangeableCells)
+                   r = map posToRef
+                     $ rangePos (fromJust posFrom) maxPos
+                   r' = if isJust rangeableCells
+                          then filter (\c -> any (==c) (fromJust rangeableCells)) r
+                          else r
+               in if isInfixOf r' unfree
+                    then Nothing
+                    else Just r'
+          else Nothing
+  in if isJust rangeCells
+      then (,) [DepRangeDown (fromJust posFrom)]
+         $ P.List P.noSrcSpan
+         $ map (P.Var P.noSrcSpan . P.UnQual P.noSrcSpan . P.Ident P.noSrcSpan)
+         $ fromJust rangeCells
+      else if isJust posFrom
+            then ([DepRangeDown (fromJust posFrom)], e)
+            else ([], e)
 preprocessExpr (P.App l e1 e2) unfree rangeableCells =
-  let e1' = preprocessExpr e1 unfree rangeableCells
-      e2' = preprocessExpr e2 unfree rangeableCells
-  in P.App l e1' e2'
+  let (rs1, e1') = preprocessExpr e1 unfree rangeableCells
+      (rs2, e2') = preprocessExpr e2 unfree rangeableCells
+  in (rs1++rs2, P.App l e1' e2')
 preprocessExpr (P.Let l binds e) unfree rangeableCells =
   let v = map unName
         $ S.toList
         $ bound
         $ allVars binds
-      e' = preprocessExpr e (unfree ++ v) rangeableCells
-  in P.Let l binds e'
+      (rs, e') = preprocessExpr e (unfree ++ v) rangeableCells
+  in (rs, P.Let l binds e')
 preprocessExpr (P.InfixApp l e1 op e2) unfree rangeableCells =
-  let e1' = preprocessExpr e1 unfree rangeableCells
-      e2' = preprocessExpr e2 unfree rangeableCells
-  in P.InfixApp l e1' op e2'
+  let (rs1, e1') = preprocessExpr e1 unfree rangeableCells
+      (rs2, e2') = preprocessExpr e2 unfree rangeableCells
+  in (rs1++rs2, P.InfixApp l e1' op e2')
 preprocessExpr (P.Lambda l patterns e) unfree rangeableCells =
   let v = map unName
         $ S.toList
         $ bound
         $ allVars patterns
-      e' = preprocessExpr e (unfree ++ v) rangeableCells
-  in P.Lambda l patterns e'
-preprocessExpr e _ _ = e
+      (rs, e') = preprocessExpr e (unfree ++ v) rangeableCells
+  in (rs, P.Lambda l patterns e')
+preprocessExpr e _ _ = ([], e)
 
 unName :: P.Name l -> String
 unName (P.Ident _ n) = n
@@ -367,3 +404,9 @@ posRef _ = Nothing
 rangePos :: Pos -> Pos -> [Pos]
 rangePos (c1,r1) (c2,r2) =
   [(c, r) | c <- [c1..c2], r <- [r1..r2]]
+
+col :: Pos -> Int
+col = fst
+
+row :: Pos -> Int
+row = snd

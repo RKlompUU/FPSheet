@@ -20,7 +20,7 @@ import qualified Data.Text.Lazy.IO as T
 
 saveSheet :: Sheet C -> String -> IO ()
 saveSheet s f = do
-  let save = Save (s_cells s) (s_deps s)
+  let save = Save (s_cells s)
   T.writeFile f $ T.decodeUtf8 . encode $ save
 
 loadSheet :: String -> IO (Maybe Save)

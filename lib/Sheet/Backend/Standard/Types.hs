@@ -38,7 +38,7 @@ data CellT e =
 
 data Sheet c =
   Sheet { s_cells :: Map Pos c
-        , s_deps  :: Map Pos [Pos]
+        , s_deps  :: Map Pos [Dep Pos]
         , s_jobsChan :: ChanJobs
         , s_visualFeedback :: c -> CellStatus -> IO ()
         , s_ghciThread :: ThreadId
@@ -55,8 +55,7 @@ type C = CellT E
 type S = Sheet C
 
 data Save =
-  Save { save_cells :: Map Pos C
-       , save_deps  :: Map Pos [Pos] }
+  Save { save_cells :: Map Pos C }
   deriving (GHC.Generic, FromJSON, ToJSON)
 
 type StateTy = StateT S IO
@@ -81,3 +80,10 @@ data JobResCode =
   JobDefFailure |
   JobShowFailure |
   JobSuccess
+
+data Eq pos => Dep pos =
+  DepPos pos |
+  DepRange pos pos |
+  DepRangeDown pos
+  deriving (Eq, Show)
+

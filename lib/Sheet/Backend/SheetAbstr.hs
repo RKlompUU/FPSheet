@@ -22,7 +22,7 @@ import qualified Data.Set as S
 --class AnnText t where
 
 -- | The Spreadsheet API interface supplies toplevel functions.
-class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m  c e var val pos) => Spreadsheet s m c e var val pos | s -> c, s -> var, s -> e, s -> m where
+class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m c e var val dep pos) => Spreadsheet s m c e var val dep pos | s -> c, s -> var, s -> e, s -> m where
   -- | 'getSetCells' returns the list of thus far set cells
   getSetCells :: m [c]
   -- | 'getCell' retrieves a cell from the spreadsheet.
@@ -41,7 +41,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m  c e var va
   interrupt :: m ()
 
 -- | The 'Cell' API interface supplies cell manipulation functions.
-class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var val pos | c -> e, c -> var, var -> m, e -> m where
+class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m c e var val dep pos | c -> e, c -> dep, c -> var, var -> m, e -> m where
   -- | 'evalCell' tries to evaluate the cell's content, in the context of the current spreadsheet's state.
   -- This is run in the state monad. 'evalCell' must change the evaluated cell in the spreadsheet state. Possibly,
   -- depending on the implementation choices made, it additionally re-evaluates those cells that are depending on a
@@ -59,9 +59,13 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m  c e var
   getCellPos :: c -> pos
   -- | 'newCell' returns a new cell (probably an empty cell, but this is a choice left for the implementation).
   newCell :: pos -> c
+  -- dependencies
+  addCellDep :: c -> dep -> m ()
+  delCellDep :: c -> dep -> m ()
+  getCellDeps :: c -> m [c]
 
 -- | The 'Expr' API interface supplies expression manipulation functions.
-class (MonadState s m, Var var pos) => Expr s m  e var val pos | e -> val, e -> pos, e -> var, var -> m, e -> m where
+class (MonadState s m, Var var pos) => Expr s m e var val pos | e -> val, e -> pos, e -> var, var -> m, e -> m where
   refsInExpr :: e -> S.Set pos
 
 -- | The 'Var' API interface is currently purely used to allow for different
