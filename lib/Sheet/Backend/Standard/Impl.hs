@@ -94,7 +94,11 @@ instance Cell S StateTy C E VAR VAL Pos where
         setCell (c { c_uFlag = True, c_res = Nothing })
 
         jobChan <- s_jobsChan <$> get
-        let e = preprocessExprStr $ getText c
+        rangeableCells <- Just
+                      <$> map (posToRef . getCellPos)
+                      <$> filter (not . null . getText)
+                      <$> getSetCells
+        let e = preprocessExprStr (getText c) rangeableCells
         let j = BackendJob (posToRef cPos) e $
                   \resCode res -> do
                     c' <- getCell cPos
@@ -115,7 +119,7 @@ instance Cell S StateTy C E VAR VAL Pos where
   getEval = c_res
   getText = c_str
   setText str c = do
-    let str' = preprocessExprStr str
+    let str' = preprocessExprStr str Nothing
     let oldDeps = S.toList $ refsInExpr (c_str c)
         newDeps = S.toList $ refsInExpr str'
         expired = oldDeps \\ newDeps
@@ -300,54 +304,57 @@ loop :: Monad m => m () -> m ()
 loop action = action >> loop action
 
 
-preprocessExprStr :: String -> String
-preprocessExprStr eStr =
+preprocessExprStr :: String -> Maybe [String] -> String
+preprocessExprStr eStr rangeableCells =
   case P.parseExp eStr of
     P.ParseFailed _ _ -> eStr
     P.ParseOk p ->
-      let p' = preprocessExpr p []
+      let p' = preprocessExpr p [] rangeableCells
       in P.prettyPrint p'
 
-preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> P.Exp P.SrcSpanInfo
-preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree =
+preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> Maybe [String] -> P.Exp P.SrcSpanInfo
+preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree rangeableCells =
   let posFrom = posRef enumFrom
       posTo   = posRef enumTo
       rangeCells =
         if isJust posFrom && isJust posTo
           then let r = map posToRef
                      $ rangePos (fromJust posFrom) (fromJust posTo)
-               in if isInfixOf r unfree
+                   r' = if isJust rangeableCells
+                          then filter (\c -> any (==c) (fromJust rangeableCells)) r
+                          else r
+               in if isInfixOf r' unfree
                     then Nothing
-                    else Just r
+                    else Just r'
           else Nothing
   in if isJust rangeCells
       then P.List P.noSrcSpan
          $ map (P.Var P.noSrcSpan . P.UnQual P.noSrcSpan . P.Ident P.noSrcSpan)
          $ fromJust rangeCells
       else e
-preprocessExpr (P.App l e1 e2) unfree =
-  let e1' = preprocessExpr e1 unfree
-      e2' = preprocessExpr e2 unfree
+preprocessExpr (P.App l e1 e2) unfree rangeableCells =
+  let e1' = preprocessExpr e1 unfree rangeableCells
+      e2' = preprocessExpr e2 unfree rangeableCells
   in P.App l e1' e2'
-preprocessExpr (P.Let l binds e) unfree =
+preprocessExpr (P.Let l binds e) unfree rangeableCells =
   let v = map unName
         $ S.toList
         $ bound
         $ allVars binds
-      e' = preprocessExpr e (unfree ++ v)
+      e' = preprocessExpr e (unfree ++ v) rangeableCells
   in P.Let l binds e'
-preprocessExpr (P.InfixApp l e1 op e2) unfree =
-  let e1' = preprocessExpr e1 unfree
-      e2' = preprocessExpr e2 unfree
+preprocessExpr (P.InfixApp l e1 op e2) unfree rangeableCells =
+  let e1' = preprocessExpr e1 unfree rangeableCells
+      e2' = preprocessExpr e2 unfree rangeableCells
   in P.InfixApp l e1' op e2'
-preprocessExpr (P.Lambda l patterns e) unfree =
+preprocessExpr (P.Lambda l patterns e) unfree rangeableCells =
   let v = map unName
         $ S.toList
         $ bound
         $ allVars patterns
-      e' = preprocessExpr e (unfree ++ v)
+      e' = preprocessExpr e (unfree ++ v) rangeableCells
   in P.Lambda l patterns e'
-preprocessExpr e _ = e
+preprocessExpr e _ _ = e
 
 unName :: P.Name l -> String
 unName (P.Ident _ n) = n
