@@ -19,6 +19,7 @@ import Brick.BChan
 import Data.List
 import Control.Concurrent
 
+import System.Environment
 import System.Console.Terminal.Size
 
 import qualified Data.Text as T
@@ -36,12 +37,14 @@ type BrickN = String -- Custom resource type
 
 runTUI :: IO ()
 runTUI = do
+  args <- getArgs
+  let f = safeGet args 0
   asyncResChan <- Brick.BChan.newBChan 10000
   initialState <- initUISheet asyncResChan
   let app = App { appDraw = drawImpl,
                   appChooseCursor = chooseCursorImpl,
                   appHandleEvent = handleEventImpl,
-                  appStartEvent = startEventImpl,
+                  appStartEvent = startEventImpl f,
                   appAttrMap = attrMapImpl }
   finalState <- customMain (Graphics.Vty.mkVty Graphics.Vty.defaultConfig)
                 (Just asyncResChan)
@@ -297,18 +300,23 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) 
         CmdQuit -> halt s
         CmdInvalid -> continue
                     $ setSheetModeNormal s
-      -- fmap (continue {uiMode = ModeNormal}) s'
-      -- continue $ s {uiMode = ModeNormal}
     VtyEvent vtEv -> do
       e' <- handleEditorEvent vtEv editField
       continue $ s { uiMode = m {cmdEditor = e', cmdEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
     _ -> continue s
 
-startEventImpl :: BrickS -> EventM BrickN BrickS
-startEventImpl s = do
+startEventImpl :: Maybe String -> BrickS -> EventM BrickN BrickS
+startEventImpl f s = do
   (cols, rows) <- liftIO $ maybe (80,24) (\w -> (width w, height w))
                         <$> size
-  return $ uiResize cols rows s
+  cells' <- case f of
+              Just file -> do
+                cells' <- liftIO $ do
+                          flip execStateT (sheetCells s) $ do
+                            load file
+                return cells'
+              Nothing -> return $ sheetCells s
+  return $ uiResize cols rows (s { sheetCells = cells' })
 
 attrMapImpl :: BrickS -> AttrMap
 attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue),
@@ -329,3 +337,8 @@ yellowBg = attrName "yellowBg"
 applyStandout :: Widget BrickN -> Widget BrickN
 applyStandout w =
   withAttr blueBg $ modifyDefAttr (flip withStyle standout) w
+
+safeGet :: [a] -> Int -> Maybe a
+safeGet xs i
+  | length xs > i = Just $ xs !! i
+  | otherwise     = Nothing
