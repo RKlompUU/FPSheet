@@ -36,8 +36,11 @@ While in normal mode, press:
 
 ### TODOs
 
-- Figure out a way to get something like [a1..a4] to evaluate to [a1,a2,a3,a4]
+- We now have [a1..a10], [a1..e1], [a1..e10], similar ranges not yet supported are:
+    - [a1..]
+    - [a1,b1..]
+    - [a1,a4..]
+    - [a1,a4..a10]
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Exporting to excell savefiles
 - Undo & redo
-- Many many more vital features (aka: TODO: write these out)
