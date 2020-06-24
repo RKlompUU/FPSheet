@@ -48,6 +48,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m c e var 
   -- currently evaluated cell.
   -- | 'getEval' returns the evaluation that has been determined during
   evalCell :: c -> m ()
+  revalCell :: c -> m ()
   -- a prior call to 'evalCell' if it resulted in an evaluation. Otherwise
   -- 'getEval' returns 'Nothing'.
   getEval :: c -> Maybe e

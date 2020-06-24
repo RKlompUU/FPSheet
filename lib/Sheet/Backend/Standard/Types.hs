@@ -85,5 +85,9 @@ data Eq pos => Dep pos =
   DepPos pos |
   DepRange pos pos |
   DepRangeDown pos
-  deriving (Eq, Show)
+  deriving (Eq)
 
+instance (Show pos, Eq pos) => Show (Dep pos) where
+  show (DepPos pos) = show pos
+  show (DepRange from to) = show from ++ " -> " ++ show to
+  show (DepRangeDown from) = show from ++ " -> .."

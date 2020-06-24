@@ -67,12 +67,14 @@ instance Spreadsheet S StateTy C E VAR VAL (Dep Pos) Pos where
     case res of
       Just save -> do
         s <- get
-        put $ s { s_cells = save_cells save }
+        put $ s {s_cells = save_cells save}
         reval
       Nothing -> return ()
   reval = do
     s <- get
-    forM_ (M.keys (s_cells s)) (\p -> getCell p >>= evalCell)
+    put $ s { s_deps = M.empty }
+    cells <- getSetCells
+    mapM_ revalCell cells
   interrupt = do
     s <- get
     liftIO $ throwTo (s_ghciThread s) InterpreterInterrupt
@@ -94,8 +96,7 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
         setCell (c { c_uFlag = True, c_res = Nothing })
 
         jobChan <- s_jobsChan <$> get
-        rangeableCells <- Just
-                      <$> map (posToRef . getCellPos)
+        rangeableCells <- map (posToRef . getCellPos)
                       <$> filter (not . null . getText)
                       <$> getSetCells
         let (_, e) = preprocessExprStr (getText c) rangeableCells
@@ -116,23 +117,26 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
 
         getCell cPos >>= \c' -> setCell (c' { c_uFlag = False })
         return ()
+  revalCell c =
+    let str = getText c
+    in setText "" c >>= setText str >>= evalCell
   getEval = c_res
   getText = c_str
   setText str c = do
-    rangeableCells <- Just
-                  <$> map (posToRef . getCellPos)
+    rangeableCells <- map (posToRef . getCellPos)
                   <$> filter (not . null . getText)
                   <$> getSetCells
     let (oldRangeDeps, _) = preprocessExprStr (c_str c) rangeableCells
-    let (newRangeDeps, str') = preprocessExprStr str rangeableCells
+    let (newRangeDeps, _) = preprocessExprStr str rangeableCells
     let oldDeps = S.toList $ refsInExpr (c_str c)
-        newDeps = S.toList $ refsInExpr str'
+        newDeps = S.toList $ refsInExpr str
         expired = map DepPos (oldDeps \\ newDeps)
                ++ (oldRangeDeps \\ newRangeDeps)
         appended = map DepPos (newDeps \\ oldDeps)
                 ++ (newRangeDeps \\ oldRangeDeps)
     mapM_ (delCellDep c) expired
     mapM_ (addCellDep c) appended
+    deps <- s_deps <$> get
     setCell (c {c_str = str})
   getCellPos = c_pos
   newCell p = CellT "" Nothing False p
@@ -311,11 +315,15 @@ ghciLog :: String -> IO ()
 ghciLog str = do
   appendFile "/tmp/fpsheet_ghci.log" str
 
+appLog :: String -> IO ()
+appLog str = do
+  appendFile "/tmp/fpsheet_app.log" str
+
 loop :: Monad m => m () -> m ()
 loop action = action >> loop action
 
 
-preprocessExprStr :: String -> Maybe [String] -> ([Dep Pos], String)
+preprocessExprStr :: String -> [String] -> ([Dep Pos], String)
 preprocessExprStr eStr rangeableCells =
   case P.parseExp eStr of
     P.ParseFailed _ _ -> ([], eStr)
@@ -323,52 +331,54 @@ preprocessExprStr eStr rangeableCells =
       let (dependencyRanges, p') = preprocessExpr p [] rangeableCells
       in (dependencyRanges, P.prettyPrint p')
 
-preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> Maybe [String] -> ([Dep Pos], P.Exp P.SrcSpanInfo)
+preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> [String] -> ([Dep Pos], P.Exp P.SrcSpanInfo)
 preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree rangeableCells =
   let posFrom = posRef enumFrom
       posTo   = posRef enumTo
+      deps =
+        if isJust posFrom && isJust posTo
+          then [DepRange (fromJust posFrom) (fromJust posTo)]
+          else []
       rangeCells =
         if isJust posFrom && isJust posTo
-          then let r = map posToRef
+          then let r = filter (\c -> any (==c) rangeableCells)
+                     $ map posToRef
                      $ rangePos (fromJust posFrom) (fromJust posTo)
-                   r' = if isJust rangeableCells
-                          then filter (\c -> any (==c) (fromJust rangeableCells)) r
-                          else r
-               in if isInfixOf r' unfree
+               in if isInfixOf r unfree
                     then Nothing
-                    else Just r'
+                    else Just r
           else Nothing
   in if isJust rangeCells
-      then (,) [DepRange (fromJust posFrom) (fromJust posTo)]
+      then (,) deps
          $ P.List P.noSrcSpan
          $ map (P.Var P.noSrcSpan . P.UnQual P.noSrcSpan . P.Ident P.noSrcSpan)
          $ fromJust rangeCells
-      else ([], e)
+      else (deps, e)
 preprocessExpr e@(P.EnumFrom l enumFrom) unfree rangeableCells =
   let posFrom = posRef enumFrom
+      deps =
+        if isJust posFrom
+          then [DepRangeDown (fromJust posFrom)]
+          else []
       rangeCells =
-        if isJust posFrom && isJust rangeableCells
+        if isJust posFrom
           then let maxPos = maximum
                           $ (:) (fromJust posFrom)
                           $ filter (\(c,_) -> c == (col . fromJust) posFrom)
-                          $ map (fromJust . parsePos) (fromJust rangeableCells)
-                   r = map posToRef
+                          $ map (fromJust . parsePos) rangeableCells
+                   r = filter (\c -> any (==c) rangeableCells)
+                     $ map posToRef
                      $ rangePos (fromJust posFrom) maxPos
-                   r' = if isJust rangeableCells
-                          then filter (\c -> any (==c) (fromJust rangeableCells)) r
-                          else r
-               in if isInfixOf r' unfree
+               in if isInfixOf r unfree
                     then Nothing
-                    else Just r'
+                    else Just r
           else Nothing
   in if isJust rangeCells
-      then (,) [DepRangeDown (fromJust posFrom)]
+      then (,) deps
          $ P.List P.noSrcSpan
          $ map (P.Var P.noSrcSpan . P.UnQual P.noSrcSpan . P.Ident P.noSrcSpan)
          $ fromJust rangeCells
-      else if isJust posFrom
-            then ([DepRangeDown (fromJust posFrom)], e)
-            else ([], e)
+      else (deps, e)
 preprocessExpr (P.App l e1 e2) unfree rangeableCells =
   let (rs1, e1') = preprocessExpr e1 unfree rangeableCells
       (rs2, e2') = preprocessExpr e2 unfree rangeableCells
