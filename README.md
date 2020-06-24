@@ -36,8 +36,7 @@ While in normal mode, press:
 
 ### TODOs
 
-- We now have [a1..a10], [a1..e1], [a1..e10], similar ranges not yet supported are:
-    - [a1..]
+- We now have [a1..a10], [a1..e1], [a1..e10], [a1..], similar ranges not yet supported are:
     - [a1,b1..]
     - [a1,a4..]
     - [a1,a4..a10]
