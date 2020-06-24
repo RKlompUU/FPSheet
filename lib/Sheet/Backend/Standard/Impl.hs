@@ -217,24 +217,6 @@ pRow :: SParser Int
 pRow =
   SimpleP.natural
 
--- | 'isInBox' if the position is inside the box 'Nothing' is returned.
--- Otherwise, it returns the offset of the position towards the box.
-isInBox :: Pos -> (Pos,Pos) -> Maybe Pos
-isInBox (r,c) ((rL, cL), (rH, cH)) =
-  let rOffset = if r < rL
-                  then r - rL
-                  else if r > rH
-                    then r - rH
-                    else 0
-      cOffset = if c < cL
-                  then c - cL
-                  else if c > cH
-                    then c - cH
-                    else 0
-  in if rOffset == 0 && cOffset == 0
-      then Nothing
-      else Just (rOffset,cOffset)
-
 -- | 'resetUpdateFields' removes the update flags of all cells.
 resetUpdateFields :: S -> S
 resetUpdateFields s = s {s_cells = M.map (\c -> c {c_uFlag = False}) (s_cells s)}
