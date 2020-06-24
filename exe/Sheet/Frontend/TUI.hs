@@ -239,8 +239,14 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
     VtyEvent (EvKey KEnter []) -> do
       let (col,row) = sheetCursor s
           str = maybe "" getText $ M.lookup (col,row) (s_cells $ sheetCells s)
-      continue $ s { uiMode = ModeEdit {cellEditor = editor "Cell editor" (Just 1) str,
-                                        cellEditorWidth = max (cWidth s) (length str + 2)} }
+          editField = editor "Cell editor" (Just 1) str
+      e' <- handleEditorEvent (EvKey (KChar 'e') [MCtrl]) editField
+      continue $ s {
+        uiMode = ModeEdit {
+          cellEditor = e',
+          cellEditorWidth = max (cWidth s) (length str + 2)
+        }
+      }
     VtyEvent (EvKey (KChar ';') []) -> enterCmdEditor
     VtyEvent (EvKey (KChar ':') []) -> enterCmdEditor
     VtyEvent (EvKey KRight []) -> do
@@ -255,18 +261,33 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
     VtyEvent (EvKey KDown []) -> do
       let (cCursor, rCursor) = sheetCursor s
       continue $ moveCursor cCursor (rCursor + 1) s
+    VtyEvent vtEv -> do
+      let (col,row) = sheetCursor s
+          editField = editor "Cell editor" (Just 1) ""
+      e' <- handleEditorEvent vtEv editField
+      continue $ s {
+        uiMode = ModeEdit {
+          cellEditor = e',
+          cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))
+        }
+      }
     _ -> continue s
 ------
 handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev = do
+  let apply = do let str = intercalate "" $ getEditContents editField
+                 cells' <- liftIO $ flip execStateT (sheetCells s) $ getCell (sheetCursor s) >>= setText str >>= evalCell
+                 return $ s { sheetCells = cells', uiMode = ModeNormal }
   case ev of
     VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
-    VtyEvent (EvKey KEnter []) -> do
-      let str = intercalate "\n" $ getEditContents editField
-      cells' <- liftIO $ do
-        flip execStateT (sheetCells s) $ do
-          let p = sheetCursor s
-          getCell p >>= setText str >>= evalCell
-      continue $ s { sheetCells = cells', uiMode = ModeNormal }
+    VtyEvent (EvKey KEnter []) -> apply >>= continue
+    VtyEvent (EvKey KUp []) -> do
+      s' <- apply
+      let (cCursor, rCursor) = sheetCursor s
+      continue $ moveCursor cCursor (rCursor-1) s'
+    VtyEvent (EvKey KDown []) -> do
+      s' <- apply
+      let (cCursor, rCursor) = sheetCursor s
+      continue $ moveCursor cCursor (rCursor + 1) s'
     VtyEvent vtEv -> do
       e' <- handleEditorEvent vtEv editField
       continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }

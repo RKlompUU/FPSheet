@@ -311,7 +311,7 @@ preprocessExprStr eStr rangeableCells =
     P.ParseFailed _ _ -> ([], eStr)
     P.ParseOk p ->
       let (dependencyRanges, p') = preprocessExpr p [] rangeableCells
-      in (dependencyRanges, P.prettyPrint p')
+      in (dependencyRanges, P.prettyPrintStyleMode (P.style {P.mode = P.LeftMode}) P.defaultMode p')
 
 preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> [String] -> ([Dep Pos], P.Exp P.SrcSpanInfo)
 preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree rangeableCells =
