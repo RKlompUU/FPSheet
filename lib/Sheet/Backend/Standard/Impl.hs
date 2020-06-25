@@ -254,8 +254,6 @@ ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
 ghciThread jobs respF = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
-    I.loadModules ["FPSheetStd.hs"]
-    I.setTopLevelModules ["FPSheetStd"]
     liftIO $ ghciLog $ ";\n;\n"
     loop $ do
       flip MC.catch catchInterrupt $ do
