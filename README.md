@@ -43,3 +43,4 @@ While in normal mode, press:
 - Copy pasting cells (properly handling loose and stuck cell references)
 - Exporting to excell savefiles
 - Undo & redo
+- Plotting

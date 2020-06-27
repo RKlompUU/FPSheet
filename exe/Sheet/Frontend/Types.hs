@@ -25,13 +25,25 @@ data UISheet =
     uiMode :: UIMode,
 
     cellStatus :: M.Map Pos CellStatus,
+    cellDecorations :: M.Map Pos CellDecorations,
 
     custEvChan :: BChan CustomEvent,
     showCellFeedbackTimeout :: Int -- in milliseconds
   }
 
+data CellDecorations =
+  CellDecorations {
+    dec_underline :: Bool
+  }
+
+defaultCellDecorations =
+  CellDecorations {
+    dec_underline = False
+  }
+
 data UIMode =
     ModeNormal
+  | ModeVisual
   | ModeEdit {
       cellEditor :: Editor String String,
       cellEditorWidth :: Int
@@ -60,6 +72,7 @@ initUISheet customEvChan = do
     screenHeight = 24,
     uiMode = ModeNormal,
     cellStatus = M.empty,
+    cellDecorations = M.empty,
     custEvChan = customEvChan,
     showCellFeedbackTimeout = 500
   }

@@ -247,6 +247,10 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
           cellEditorWidth = max (cWidth s) (length str + 2)
         }
       }
+    VtyEvent (EvKey (KChar 'v') []) -> do
+      continue $ s {
+        uiMode = ModeVisual
+      }
     VtyEvent (EvKey (KChar ';') []) -> enterCmdEditor
     VtyEvent (EvKey (KChar ':') []) -> enterCmdEditor
     VtyEvent (EvKey KRight []) -> do
@@ -273,6 +277,31 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
       }
     _ -> continue s
 ------
+handleEventImpl s@(UISheet { uiMode = ModeVisual }) ev = do
+  case ev of
+    VtyEvent (EvKey (KChar 'u') []) -> do
+      let cursor = sheetCursor s
+          cellDecs = maybe defaultCellDecorations id
+                   $ M.lookup cursor (cellDecorations s)
+          cellDecs' = cellDecs { dec_underline = not $ dec_underline cellDecs }
+      continue $ s {
+        cellDecorations = M.insert cursor cellDecs' (cellDecorations s)
+      }
+    VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
+    VtyEvent (EvKey KRight []) -> do
+      let (cCursor, rCursor) = sheetCursor s
+      continue $ moveCursor (cCursor + 1) rCursor s
+    VtyEvent (EvKey KLeft []) -> do
+      let (cCursor, rCursor) = sheetCursor s
+      continue $ moveCursor (cCursor-1) rCursor s
+    VtyEvent (EvKey KUp []) -> do
+      let (cCursor, rCursor) = sheetCursor s
+      continue $ moveCursor cCursor (rCursor-1) s
+    VtyEvent (EvKey KDown []) -> do
+      let (cCursor, rCursor) = sheetCursor s
+      continue $ moveCursor cCursor (rCursor + 1) s
+    _ -> continue s
+------
 handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev = do
   let apply = do let str = intercalate "" $ getEditContents editField
                  cells' <- liftIO $ flip execStateT (sheetCells s) $ getCell (sheetCursor s) >>= setText str >>= evalCell
@@ -290,7 +319,12 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev
       continue $ moveCursor cCursor (rCursor + 1) s'
     VtyEvent vtEv -> do
       e' <- handleEditorEvent vtEv editField
-      continue $ s { uiMode = m {cellEditor = e', cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))} }
+      continue $ s {
+        uiMode = m {
+          cellEditor = e',
+          cellEditorWidth = max (cWidth s) (2 + (length $ intercalate "\n" $ getEditContents e'))
+        }
+      }
     _ -> continue s
 ------
 handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) ev = do
