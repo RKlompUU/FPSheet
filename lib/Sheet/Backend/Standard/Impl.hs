@@ -11,8 +11,7 @@ module Sheet.Backend.Standard.Impl (
 ) where
 
 import Sheet.Backend.Standard.Saves
-
-import qualified ParseLib.Simple as SimpleP
+import Sheet.Backend.Standard.Parsers
 
 import Data.Maybe
 import Data.Char
@@ -180,43 +179,6 @@ instance Expr S StateTy E VAR VAL Pos where
               fv2Pos (P.Symbol _ _) = Nothing
 
 
-type SParser a = SimpleP.Parser Char a
-
-parsePos :: String -> Maybe Pos
-parsePos str =
-  let res = SimpleP.parse posParser str
-  in if null res
-      then Nothing
-      else Just $ fst $ head $ res
-
-posParser :: SParser Pos
-posParser =
-  (,) SimpleP.<$> pCol SimpleP.<*> pRow
-
--- Might write this better (if it can be done better) later.
--- For now a copy paste from:
---  https://stackoverflow.com/questions/40950853/excel-column-to-int-and-vice-versa-improvements-sought
---
--- given a spreadsheet column as a string
--- returns integer giving the position of the column
--- ex:
--- toInt "A" = 1
--- toInt "XFD" = 16384
-toInt :: String -> Int
-toInt = foldl fn 0
-  where
-    fn = \a c -> 26*a + ((ord c)-(ord 'a' - 1))
-
-toCol :: Int -> String
-toCol c = ([0..] >>= flip replicateM ['a'..'z']) !! c
-
-pCol :: SParser Int
-pCol =
-  toInt SimpleP.<$> SimpleP.some (SimpleP.satisfy (\c -> any (== c) ['a'..'z']))
-pRow :: SParser Int
-pRow =
-  SimpleP.natural
-
 -- | 'resetUpdateFields' removes the update flags of all cells.
 resetUpdateFields :: S -> S
 resetUpdateFields s = s {s_cells = M.map (\c -> c {c_uFlag = False}) (s_cells s)}
@@ -255,41 +217,72 @@ ghciThread jobs respF = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     liftIO $ ghciLog $ ";\n;\n"
-    loop $ do
-      flip MC.catch catchInterrupt $ do
+    flip loop ["Prelude"] $ \state -> do
+      flip MC.catch (catchInterrupt state) $ do
         j <- liftIO $ readChan jobs
 
-        res' <- do
-            liftIO $ ghciLog $
-              "------------------------\nNew job:\n"
-            let letDef = "let " ++ bJob_cName j ++ " = " ++ bJob_cDef j
-            liftIO $ ghciLog $
-              "\t" ++ letDef ++ "\n"
-            flip MC.catch (catchDefErr j) $ do
-              I.runStmt letDef
+        liftIO $ ghciLog $
+          "------------------------\nNew job:\n"
 
-              liftIO $ ghciLog $
-                "\tletDef executed\n"
-
-              flip MC.catch (catchShowErr j) $ do
-                res <- I.eval (bJob_cName j)
-                liftIO $ ghciLog $
-                  "\tres: " ++ show res ++ "\n"
-                return $ BackendJobResponse (bJob_resBody j JobSuccess (Just res))
+        (state', res') <- case parseCellDef (bJob_cDef j) of
+          Just (LetDef str) -> letdef j str state
+          Just (Import str) -> importModule j str state
+          Just (IODef str)  -> iodef j str state
         liftIO $ respF res'
+        return state'
   ghciLog (show crash)
   return ()
-  where catchDefErr :: BackendJob -> SomeException -> I.Interpreter BackendJobResponse
-        catchDefErr j e = do
+  where catchDefErr :: [String] -> BackendJob -> SomeException -> I.Interpreter ([String], BackendJobResponse)
+        catchDefErr s j e = do
           liftIO $ ghciLog ("***********\n" ++ show e ++ "\n*************\n")
           I.runStmt $ "let " ++ bJob_cName j ++ " = undefined"
-          return $ BackendJobResponse (bJob_resBody j JobDefFailure Nothing)
-        catchShowErr :: BackendJob -> SomeException -> I.Interpreter BackendJobResponse
-        catchShowErr j e = do
+          return $ (s, BackendJobResponse (bJob_resBody j JobDefFailure Nothing))
+        catchShowErr :: [String] -> BackendJob -> SomeException -> I.Interpreter ([String], BackendJobResponse)
+        catchShowErr s j e = do
           liftIO $ ghciLog ("\t" ++ show e ++ "\n")
-          return $ BackendJobResponse (bJob_resBody j JobShowFailure Nothing)
-        catchInterrupt :: Interrupt -> I.Interpreter ()
-        catchInterrupt e =  return ()
+          return $ (s, BackendJobResponse (bJob_resBody j JobShowFailure Nothing))
+        catchInterrupt :: a -> Interrupt -> I.Interpreter a
+        catchInterrupt x e = return x
+
+        importModule :: BackendJob -> String -> [String] -> I.Interpreter ([String], BackendJobResponse)
+        importModule j m s = do
+          let s' = nub $ m : s
+          flip MC.catch (catchDefErr s j) $ do
+            I.setImports s'
+            return $ (s', BackendJobResponse (bJob_resBody j JobSuccess (Just m)))
+
+        iodef :: BackendJob -> String -> [String] -> I.Interpreter ([String], BackendJobResponse)
+        iodef j cdef s = do
+          let ioDef = bJob_cName j ++ " <- " ++ cdef
+          liftIO $ ghciLog $
+            "\t" ++ ioDef ++ "\n"
+          flip MC.catch (catchDefErr s j) $ do
+            I.runStmt ioDef
+            liftIO $ ghciLog $
+              "\tioDef executed\n"
+
+            flip MC.catch (catchShowErr s j) $ do
+              res <- I.eval (bJob_cName j)
+              liftIO $ ghciLog $
+                "\tres: " ++ show res ++ "\n"
+              return $ (s, BackendJobResponse (bJob_resBody j JobSuccess (Just res)))
+
+        letdef :: BackendJob -> String -> [String] -> I.Interpreter ([String], BackendJobResponse)
+        letdef j cdef s = do
+          let letDef = "let " ++ bJob_cName j ++ " = " ++ cdef
+          liftIO $ ghciLog $
+            "\t" ++ letDef ++ "\n"
+          flip MC.catch (catchDefErr s j) $ do
+            I.runStmt letDef
+
+            liftIO $ ghciLog $
+              "\tletDef executed\n"
+
+            flip MC.catch (catchShowErr s j) $ do
+              res <- I.eval (bJob_cName j)
+              liftIO $ ghciLog $
+                "\tres: " ++ show res ++ "\n"
+              return $ (s, BackendJobResponse (bJob_resBody j JobSuccess (Just res)))
 
 ghciLog :: String -> IO ()
 ghciLog str = do
@@ -299,8 +292,8 @@ appLog :: String -> IO ()
 appLog str = do
   appendFile "/tmp/fpsheet_app.log" str
 
-loop :: Monad m => m () -> m ()
-loop action = action >> loop action
+loop :: Monad m => (a -> m a) -> a -> m a
+loop action x = action x >>= loop action
 
 
 preprocessExprStr :: String -> [String] -> ([Dep Pos], String)

@@ -31,6 +31,7 @@ library
       Sheet.Backend.SheetAbstr
       Sheet.Backend.Standard.Types
       Sheet.Backend.Standard.Saves
+      Sheet.Backend.Standard.Parsers
       Sheet.Backend.Standard.Impl
   hs-source-dirs:
       lib

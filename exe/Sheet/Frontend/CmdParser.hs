@@ -29,11 +29,6 @@ cmdParser =
   CmdLoad <$> (symbol 'r' *> pWhitespace *> pFilename) <|>
   CmdQuit <$ symbol 'q'
 
-pWhitespace :: CmdParser ()
-pWhitespace =
-  let wspace = [' ','\t','\n','\r']
-  in const () <$> greedy1 (satisfy (flip elem wspace))
-
 pFilename :: CmdParser String
 pFilename =
   let fchars = ['a'..'z'] ++ ['A'..'Z'] ++ ['.', '/']
