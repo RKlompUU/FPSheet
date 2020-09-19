@@ -159,6 +159,12 @@ sheetCursorPos s =
       y = (rCursor - rOffset) + headerHeight s
   in (x,y)
 
+uiSetActiveFile :: Maybe String -> UISheet -> UISheet
+uiSetActiveFile f s =
+  s {
+    activeFile = f
+  }
+
 uiResize :: Int -> Int -> UISheet -> UISheet
 uiResize width height s =
   let rows = height - headerHeight s - 2
@@ -299,6 +305,12 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) 
     VtyEvent (EvKey KEnter []) -> do
       let str = intercalate "\n" $ getEditContents editField
           setSheetModeNormal s = s {uiMode = ModeNormal}
+          saveFile f = liftIO $ do
+                        flip execStateT (sheetCells s) $ do
+                          save f
+          saveActiveFile = case activeFile s of
+                            Just f -> saveFile f >> return ()
+                            Nothing -> return ()
       case parseCmd str of
         CmdMoveCursor col row -> continue
                                $ setSheetModeNormal
@@ -309,16 +321,17 @@ handleEventImpl s@(UISheet { uiMode = m@(ModeCommand{cmdEditor = editField}) }) 
               importFile f simpleImport
           continue $ s { sheetCells = cells', uiMode = ModeNormal }
         CmdSave f -> do
-          liftIO $ do
-            flip execStateT (sheetCells s) $ do
-              save f
+          saveFile f
           continue $ s { uiMode = ModeNormal }
         CmdLoad f -> do
           cells' <- liftIO $ do
             flip execStateT (sheetCells s) $ do
               load f
           continue $ s { sheetCells = cells', uiMode = ModeNormal }
-        CmdQuit -> halt s
+        CmdSaveActiveFile -> saveActiveFile >> continue (s { uiMode = ModeNormal })
+        CmdQuit save -> if save
+                          then saveActiveFile >> halt s
+                          else halt s
         CmdInvalid -> continue
                     $ setSheetModeNormal s
     VtyEvent vtEv -> do
@@ -337,7 +350,7 @@ startEventImpl f s = do
                             load file
                 return cells'
               Nothing -> return $ sheetCells s
-  return $ uiResize cols rows (s { sheetCells = cells' })
+  return $ (uiSetActiveFile f . uiResize cols rows) (s { sheetCells = cells' })
 
 attrMapImpl :: BrickS -> AttrMap
 attrMapImpl _ = attrMap defAttr [ (blueBg, bg blue),

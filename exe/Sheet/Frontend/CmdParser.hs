@@ -9,9 +9,10 @@ data Command =
   CmdInvalid |
   CmdMoveCursor Int Int |
   CmdImport Bool String |
+  CmdSaveActiveFile |
   CmdSave String |
   CmdLoad String |
-  CmdQuit
+  CmdQuit Bool
 
 type CmdParser a = Parser Char a
 
@@ -25,9 +26,11 @@ cmdParser :: CmdParser Command
 cmdParser =
   CmdMoveCursor <$> pCol <*> pRow <|>
   CmdImport <$> ((=='i') <$> (symbol 'i' <|> symbol 'I')) <*> (pWhitespace *> pFilename) <|>
+  CmdSaveActiveFile <$ symbol 'w' <|>
   CmdSave <$> (symbol 'w' *> pWhitespace *> pFilename) <|>
   CmdLoad <$> (symbol 'r' *> pWhitespace *> pFilename) <|>
-  CmdQuit <$ symbol 'q'
+  CmdQuit True <$ token "wq" <|>
+  CmdQuit False <$ symbol 'q'
 
 pFilename :: CmdParser String
 pFilename =

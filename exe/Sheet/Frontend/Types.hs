@@ -11,6 +11,8 @@ import qualified Data.Map as M
 -- submodule pass a value of this datatype along in a statewise matter.
 data UISheet =
   UISheet {
+    activeFile :: Maybe String,
+
     sheetCells  :: S,
     sheetCursor :: Pos,
     sheetOffset :: Pos,

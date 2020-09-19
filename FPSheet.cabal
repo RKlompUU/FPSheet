@@ -71,5 +71,6 @@ executable FPSheet-exe
       vty,
       terminal-size,
       text,
-      uu-tc
+      uu-tc,
+      json
   default-language: Haskell2010
