@@ -213,7 +213,8 @@ initSheet asyncResFunc visualFeedbackFunc = do
 
 data IState = IState {
   istate_imports :: [String],
-  istate_loads   :: [String]
+  istate_loads   :: [String],
+  istate_exts    :: [I.Extension]
 } deriving Show
 
 ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
@@ -221,7 +222,7 @@ ghciThread jobs respF = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     liftIO $ ghciLog $ ";\n;\n"
-    let initState = IState ["Prelude"] []
+    let initState = IState ["Prelude"] [] []
     flip loop initState $ \state -> do
       flip MC.catch (catchInterrupt state) $ do
         j <- liftIO $ readChan jobs
@@ -234,6 +235,7 @@ ghciThread jobs respF = do
           Just (Import str) -> importModule j str state
           Just (Load   str) -> loadModule j str state
           Just (IODef  str) -> iodef j str state
+          Just (LanguageExtension ext) -> addExtension j ext state
         liftIO $ respF res'
         return state'
   ghciLog (show crash)
@@ -247,6 +249,12 @@ ghciThread jobs respF = do
         catchShowErr s j e = do
           liftIO $ ghciLog ("\t" ++ show e ++ "\n")
           return $ (s, BackendJobResponse (bJob_resBody j JobShowFailure Nothing))
+        catchModulesErr :: IState -> BackendJob -> SomeException -> I.Interpreter (IState, BackendJobResponse)
+        catchModulesErr s j e = do
+          liftIO $ ghciLog ("\t" ++ show e ++ "\n")
+          I.setImports $ istate_imports s
+          return $ (s, BackendJobResponse (bJob_resBody j JobShowFailure Nothing))
+
         catchInterrupt :: a -> Interrupt -> I.Interpreter a
         catchInterrupt x e = return x
 
@@ -254,7 +262,7 @@ ghciThread jobs respF = do
         importModule j m s = do
           let i' = nub $ m : istate_imports s
           let s' = s { istate_imports = i' }
-          flip MC.catch (catchDefErr s j) $ do
+          flip MC.catch (catchModulesErr s j) $ do
             I.setImports i'
             return $ (s', BackendJobResponse (bJob_resBody j JobSuccess (Just m)))
 
@@ -262,10 +270,19 @@ ghciThread jobs respF = do
         loadModule j m s = do
           let l' = nub $ m : istate_loads s
           let s' = s { istate_loads = l' }
-          flip MC.catch (catchDefErr s j) $ do
+          flip MC.catch (catchModulesErr s j) $ do
             I.loadModules l'
+            I.setImports $ istate_imports s'
             I.setTopLevelModules $ map (\m_ -> take (fromJust . findIndex (=='.') $ m_) m_) l'
             return $ (s', BackendJobResponse (bJob_resBody j JobSuccess (Just m)))
+
+        addExtension :: BackendJob -> I.Extension -> IState -> I.Interpreter (IState, BackendJobResponse)
+        addExtension j ext s = do
+          let exts' = nub $ ext : istate_exts s
+          let s' = s { istate_exts = exts' }
+          flip MC.catch (catchModulesErr s j) $ do
+            I.set [I.languageExtensions I.:= exts']
+            return $ (s', BackendJobResponse (bJob_resBody j JobSuccess (Just $ show ext)))
 
         iodef :: BackendJob -> String -> IState -> I.Interpreter (IState, BackendJobResponse)
         iodef j cdef s = do

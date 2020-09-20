@@ -5,6 +5,8 @@ import Data.Char
 import ParseLib.Simple hiding ((>>=))
 import Prelude hiding ((<$>), (<*>), (<*), (*>))
 
+import qualified Language.Haskell.Interpreter as HInt
+
 import Sheet.Backend.Standard.Types
 
 
@@ -15,6 +17,7 @@ data CellDef =
   | Import String
   | Load   String
   | IODef  String
+  | LanguageExtension HInt.Extension
 
 parseCellDef :: String -> Maybe CellDef
 parseCellDef str =
@@ -28,6 +31,7 @@ cellDefParser =
       IODef  <$> (symbol '`' *> many anySymbol <* symbol '`')
   <|> Import <$> (token ":m" *> pWhitespace *> many anySymbol)
   <|> Load   <$> (token ":l" *> pWhitespace *> many anySymbol)
+  <|> LanguageExtension <$> (read <$> (token ":e" *> pWhitespace *> many anySymbol))
   <|> LetDef <$> greedy anySymbol
 
 parsePos :: String -> Maybe Pos
