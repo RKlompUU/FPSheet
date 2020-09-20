@@ -13,6 +13,7 @@ type SParser a = Parser Char a
 data CellDef =
     LetDef String
   | Import String
+  | Load   String
   | IODef  String
 
 parseCellDef :: String -> Maybe CellDef
@@ -24,8 +25,9 @@ parseCellDef str =
 
 cellDefParser :: SParser CellDef
 cellDefParser =
-      IODef <$> (symbol '`' *> many anySymbol <* symbol '`')
+      IODef  <$> (symbol '`' *> many anySymbol <* symbol '`')
   <|> Import <$> (token ":m" *> pWhitespace *> many anySymbol)
+  <|> Load   <$> (token ":l" *> pWhitespace *> many anySymbol)
   <|> LetDef <$> greedy anySymbol
 
 parsePos :: String -> Maybe Pos

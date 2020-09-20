@@ -52,6 +52,7 @@ initUISheet customEvChan = do
   sheet <- initSheet (\j -> writeBChan customEvChan $ EvNewDefinition j)
                      (\cell stat -> writeBChan customEvChan $ EvVisualFeedback cell stat)
   return $ UISheet {
+    activeFile = Nothing,
     sheetCells = sheet,
     sheetCursor = (1,1),
     sheetOffset = (1,1),

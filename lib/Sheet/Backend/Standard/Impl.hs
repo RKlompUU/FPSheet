@@ -211,13 +211,18 @@ initSheet asyncResFunc visualFeedbackFunc = do
   ghciThreadID <- forkIO (ghciThread jobChan asyncResFunc)
   return $ Sheet M.empty M.empty jobChan visualFeedbackFunc ghciThreadID
 
+data IState = IState {
+  istate_imports :: [String],
+  istate_loads   :: [String]
+} deriving Show
 
 ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
 ghciThread jobs respF = do
   crash <- I.runInterpreter $ do
     I.setImports ["Prelude"]
     liftIO $ ghciLog $ ";\n;\n"
-    flip loop ["Prelude"] $ \state -> do
+    let initState = IState ["Prelude"] []
+    flip loop initState $ \state -> do
       flip MC.catch (catchInterrupt state) $ do
         j <- liftIO $ readChan jobs
 
@@ -227,31 +232,42 @@ ghciThread jobs respF = do
         (state', res') <- case parseCellDef (bJob_cDef j) of
           Just (LetDef str) -> letdef j str state
           Just (Import str) -> importModule j str state
-          Just (IODef str)  -> iodef j str state
+          Just (Load   str) -> loadModule j str state
+          Just (IODef  str) -> iodef j str state
         liftIO $ respF res'
         return state'
   ghciLog (show crash)
   return ()
-  where catchDefErr :: [String] -> BackendJob -> SomeException -> I.Interpreter ([String], BackendJobResponse)
+  where catchDefErr :: IState -> BackendJob -> SomeException -> I.Interpreter (IState, BackendJobResponse)
         catchDefErr s j e = do
           liftIO $ ghciLog ("***********\n" ++ show e ++ "\n*************\n")
           I.runStmt $ "let " ++ bJob_cName j ++ " = undefined"
           return $ (s, BackendJobResponse (bJob_resBody j JobDefFailure Nothing))
-        catchShowErr :: [String] -> BackendJob -> SomeException -> I.Interpreter ([String], BackendJobResponse)
+        catchShowErr :: IState -> BackendJob -> SomeException -> I.Interpreter (IState, BackendJobResponse)
         catchShowErr s j e = do
           liftIO $ ghciLog ("\t" ++ show e ++ "\n")
           return $ (s, BackendJobResponse (bJob_resBody j JobShowFailure Nothing))
         catchInterrupt :: a -> Interrupt -> I.Interpreter a
         catchInterrupt x e = return x
 
-        importModule :: BackendJob -> String -> [String] -> I.Interpreter ([String], BackendJobResponse)
+        importModule :: BackendJob -> String -> IState -> I.Interpreter (IState, BackendJobResponse)
         importModule j m s = do
-          let s' = nub $ m : s
+          let i' = nub $ m : istate_imports s
+          let s' = s { istate_imports = i' }
           flip MC.catch (catchDefErr s j) $ do
-            I.setImports s'
+            I.setImports i'
             return $ (s', BackendJobResponse (bJob_resBody j JobSuccess (Just m)))
 
-        iodef :: BackendJob -> String -> [String] -> I.Interpreter ([String], BackendJobResponse)
+        loadModule :: BackendJob -> String -> IState -> I.Interpreter (IState, BackendJobResponse)
+        loadModule j m s = do
+          let l' = nub $ m : istate_loads s
+          let s' = s { istate_loads = l' }
+          flip MC.catch (catchDefErr s j) $ do
+            I.loadModules l'
+            I.setTopLevelModules $ map (\m_ -> take (fromJust . findIndex (=='.') $ m_) m_) l'
+            return $ (s', BackendJobResponse (bJob_resBody j JobSuccess (Just m)))
+
+        iodef :: BackendJob -> String -> IState -> I.Interpreter (IState, BackendJobResponse)
         iodef j cdef s = do
           let ioDef = bJob_cName j ++ " <- " ++ cdef
           liftIO $ ghciLog $
@@ -267,7 +283,7 @@ ghciThread jobs respF = do
                 "\tres: " ++ show res ++ "\n"
               return $ (s, BackendJobResponse (bJob_resBody j JobSuccess (Just res)))
 
-        letdef :: BackendJob -> String -> [String] -> I.Interpreter ([String], BackendJobResponse)
+        letdef :: BackendJob -> String -> IState -> I.Interpreter (IState, BackendJobResponse)
         letdef j cdef s = do
           let letDef = "let " ++ bJob_cName j ++ " = " ++ cdef
           liftIO $ ghciLog $
