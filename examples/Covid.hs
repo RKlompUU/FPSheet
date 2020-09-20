@@ -4,15 +4,18 @@ module Covid where
 import Text.JSON.Generic
 
 data Datapoint = Datapoint {
-	country :: String,
-	active :: Int,
-	city :: String,
-	citycode :: String,
-  confirmed :: Int,
+  country :: String,
+  active :: Double,
+  city :: String,
+  citycode :: String,
+  confirmed :: Double,
   date :: String,
-  deaths :: Int,
+  deaths :: Double,
   lat :: String,
   lon :: String,
   province :: String,
-  recovered :: Int
+  recovered :: Double
 } deriving (Typeable, Data, Show, Eq)
+
+decode :: String -> [Datapoint]
+decode = decodeJSON
