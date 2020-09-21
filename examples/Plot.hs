@@ -21,18 +21,6 @@ import Diagrams.Size (requiredScaling)
 import Diagrams.Backend.Cairo (Cairo)
 import qualified Data.Colour as C
 
--- The classic Hilbert curves from the diagrams gallery:
-hilbert :: Int -> Diagram Cairo
-hilbert = frame 1 . lw medium . lc (colors!!1) . strokeT . mempty
-
--- Some more drawing code, copied from
--- projects.haskell.org/diagrams/gallery/Pentaflake.html
-colors ::[Colour Double]
-colors = iterate (C.blend 0.1 white) red
-
-p :: Diagram Cairo
-p = regPoly 5 1 # lwO 0
-
 -- A function to set up the main window and signal handlers
 createMainWindow :: [(String, [Double])] -> IO Gtk.Window
 createMainWindow yss = do
@@ -74,8 +62,8 @@ createMainWindow yss = do
 --
 -- Initialize the library, create and show the main window,
 -- finally enter the main loop
-main :: [(String, [Double])] -> IO ()
-main yss = do
+plotLines :: [(String, [Double])] -> IO ()
+plotLines yss = do
     Gtk.init Nothing
     win <- createMainWindow yss
     on win #destroy Gtk.mainQuit
@@ -86,15 +74,3 @@ plotdata yss =
   let datapoints = map (\(lbl, ys) -> (lbl, zip [1..] ys)) yss
   in r2Axis &~ do
     mapM (\(lbl, points) -> linePlot points (key lbl)) datapoints
-
-mydata1 = [(1,3), (2,5.5), (3.2, 6), (3.5, 6.1)]
-mydata2 = mydata1 & each . _1 *~ 0.5
-mydata3 = [V2 1.2 2.7, V2 2 5.1, V2 3.2 2.6, V2 3.5 5]
-
-myaxis = r2Axis &~ do
-  linePlot' mydata1
-  linePlot mydata2 $ do
-    key "data 2"
-    plotColor .= black
-
-  linePlot mydata3 $ key "data 3"
