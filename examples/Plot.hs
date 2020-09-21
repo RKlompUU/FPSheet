@@ -1,6 +1,9 @@
 {- | A first example of drawing diagrams from within GTK.  This
      program draws a Koch snowflake with the depth controllable
      via a GTK widget.
+
+     Install dependencies:
+     - stack install gi-gtk plots diagrams-cairo
 -}
 {-# LANGUAGE OverloadedLabels, OverloadedStrings, TypeFamilies, FlexibleContexts, NoMonomorphismRestriction #-}
 module Plot where
@@ -31,7 +34,7 @@ p :: Diagram Cairo
 p = regPoly 5 1 # lwO 0
 
 -- A function to set up the main window and signal handlers
-createMainWindow :: [[Double]] -> IO Gtk.Window
+createMainWindow :: [(String, [Double])] -> IO Gtk.Window
 createMainWindow yss = do
     win <- new Gtk.Window []
 
@@ -71,7 +74,7 @@ createMainWindow yss = do
 --
 -- Initialize the library, create and show the main window,
 -- finally enter the main loop
-main :: [[Double]] -> IO ()
+main :: [(String, [Double])] -> IO ()
 main yss = do
     Gtk.init Nothing
     win <- createMainWindow yss
@@ -80,9 +83,9 @@ main yss = do
     Gtk.main
 
 plotdata yss =
-  let datapoints = map (zip [1..]) yss
+  let datapoints = map (\(lbl, ys) -> (lbl, zip [1..] ys)) yss
   in r2Axis &~ do
-    head <$> mapM linePlot' datapoints
+    mapM (\(lbl, points) -> linePlot points (key lbl)) datapoints
 
 mydata1 = [(1,3), (2,5.5), (3.2, 6), (3.5, 6.1)]
 mydata2 = mydata1 & each . _1 *~ 0.5
