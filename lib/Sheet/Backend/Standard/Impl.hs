@@ -98,7 +98,7 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
         rangeableCells <- map (posToRef . getCellPos)
                       <$> filter (not . null . getText)
                       <$> getSetCells
-        let (_, e) = preprocessExprStr (getText c) rangeableCells
+        let (_, e) = preprocessCellDef (c_def c) rangeableCells
         let j = BackendJob (posToRef cPos) e $
                   \resCode res -> do
                     c' <- getCell cPos
@@ -120,15 +120,16 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
     let str = getText c
     in setText "" c >>= setText str >>= evalCell
   getEval = c_res
-  getText = c_str
+  getText = show . c_def
   setText str c = do
+    let def = parseCellDef str
     rangeableCells <- map (posToRef . getCellPos)
                   <$> filter (not . null . getText)
                   <$> getSetCells
-    let (oldRangeDeps, _) = preprocessExprStr (c_str c) rangeableCells
-    let (newRangeDeps, _) = preprocessExprStr str rangeableCells
-    let oldDeps = S.toList $ refsInExpr (c_str c)
-        newDeps = S.toList $ refsInExpr str
+    let (oldRangeDeps, _) = preprocessCellDef (c_def c) rangeableCells
+    let (newRangeDeps, _) = preprocessCellDef def rangeableCells
+    let oldDeps = S.toList $ refsInExpr (c_def c)
+        newDeps = S.toList $ refsInExpr def
         expired = map DepPos (oldDeps \\ newDeps)
                ++ (oldRangeDeps \\ newRangeDeps)
         appended = map DepPos (newDeps \\ oldDeps)
@@ -136,9 +137,9 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
     mapM_ (delCellDep c) expired
     mapM_ (addCellDep c) appended
     deps <- s_deps <$> get
-    setCell (c {c_str = str})
+    setCell (c {c_def = def})
   getCellPos = c_pos
-  newCell p = CellT "" Nothing False p
+  newCell p = CellT (LetDef "") Nothing False p
   addCellDep c dep = do
     s <- get
     let deps = maybe [] id (M.lookup (c_pos c) (s_deps s))
@@ -147,14 +148,22 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
     s <- get
     let deps = maybe [] id (M.lookup (c_pos c) (s_deps s))
     put $ s {s_deps = M.insert (c_pos c) (filter (/= dep) deps) (s_deps s)}
-  getCellDeps c = do
-    s <- get
-    mapM getCell $
-      nub $
-      M.keys $
-      M.filter (any (posInDep (c_pos c))) (s_deps s)
+  getCellDeps c
+    | cellDefHasExpr (c_def c) = do
+      s <- get
+      mapM getCell $
+        nub $
+        M.keys $
+        M.filter (any (posInDep (c_pos c))) (s_deps s)
+    | otherwise = do
+      filter (cellDefHasExpr . c_def)
+      <$> getSetCells
+    where cellDefHasExpr (LetDef _) = True
+          cellDefHasExpr (IODef  _) = True
+          cellDefHasExpr _          = False
 
 posInDep :: Pos -> Dep Pos -> Bool
+posInDep _ DepAll = True
 posInDep p (DepPos depAt) = p == depAt
 posInDep p (DepRange depFrom depTo) =
   col p >= col depFrom && col p <= col depTo &&
@@ -167,16 +176,27 @@ instance Var VAR Pos where
   posToRef (c,r) =
     toCol c ++ show r
 instance Expr S StateTy E VAR VAL Pos where
-  refsInExpr eStr =
-    case P.parseExp eStr of
+  refsInExpr (LetDef str) =
+    case P.parseExp str of
       P.ParseFailed _ _ -> S.empty
       P.ParseOk p ->
         let fv = freeVars p
         in S.map fromJust
           $ S.filter isJust
           $ S.map fv2Pos fv
-        where fv2Pos (P.Ident _ str) = parsePos str
+        where fv2Pos (P.Ident _ var) = parsePos var
               fv2Pos (P.Symbol _ _) = Nothing
+  refsInExpr (IODef str) =
+    case P.parseExp str of
+      P.ParseFailed _ _ -> S.empty
+      P.ParseOk p ->
+        let fv = freeVars p
+        in S.map fromJust
+          $ S.filter isJust
+          $ S.map fv2Pos fv
+        where fv2Pos (P.Ident _ var) = parsePos var
+              fv2Pos (P.Symbol _ _) = Nothing
+  refsInExpr _ = S.empty
 
 
 -- | 'resetUpdateFields' removes the update flags of all cells.
@@ -230,12 +250,12 @@ ghciThread jobs respF = do
         liftIO $ ghciLog $
           "------------------------\nNew job:\n"
 
-        (state', res') <- case parseCellDef (bJob_cDef j) of
-          Just (LetDef str) -> letdef j str state
-          Just (Import str) -> importModule j str state
-          Just (Load   str) -> loadModule j str state
-          Just (IODef  str) -> iodef j str state
-          Just (LanguageExtension ext) -> addExtension j ext state
+        (state', res') <- case bJob_cDef j of
+          LetDef str -> letdef j str state
+          Import str -> importModule j str state
+          Load   str -> loadModule j str state
+          IODef  str -> iodef j str state
+          LanguageExtension ext -> addExtension j (read ext) state
         liftIO $ respF res'
         return state'
   ghciLog (show crash)
@@ -328,6 +348,14 @@ appLog str = do
 loop :: Monad m => (a -> m a) -> a -> m a
 loop action x = action x >>= loop action
 
+preprocessCellDef :: CellDef -> [String] -> ([Dep Pos], CellDef)
+preprocessCellDef (LetDef str) rangeableCells =
+  let (dependencyRanges, str') = preprocessExprStr str rangeableCells
+  in (dependencyRanges, LetDef str')
+preprocessCellDef (IODef str) rangeableCells =
+  let (dependencyRanges, str') = preprocessExprStr str rangeableCells
+  in (dependencyRanges, IODef str')
+preprocessCellDef def _ = ([], def)
 
 preprocessExprStr :: String -> [String] -> ([Dep Pos], String)
 preprocessExprStr eStr rangeableCells =

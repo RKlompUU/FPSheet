@@ -7,13 +7,15 @@ Stability   : experimental
 module Sheet.Backend.Standard.Types where
 
 import Control.Concurrent
+import Control.Concurrent.Chan
+
 import qualified GHC.Generics as GHC
+import qualified Language.Haskell.Interpreter as HInt
+
 import Data.Aeson
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Map as M
-
-import Control.Concurrent.Chan
 
 import Sheet.Backend.SheetAbstr
 
@@ -29,9 +31,24 @@ data CellStatus =
   | CellFailure
   | CellNoStatus
 
+data CellDef =
+    LetDef String
+  | Import String
+  | Load   String
+  | IODef  String
+  | LanguageExtension String
+  deriving (GHC.Generic, FromJSON, ToJSON)
+
+instance Show CellDef where
+  show (LetDef str) = str
+  show (IODef str)  = "`" ++ str ++ "`"
+  show (Load str)   = ":l " ++ str
+  show (Import str) = ":m " ++ str
+  show (LanguageExtension str) = ":e " ++ str
+
 data CellT e =
-  CellT { c_str   :: String -- |User defined cell's text
-        , c_res   :: Maybe e -- |The result of the last evaluation of cStr
+  CellT { c_def   :: e -- |User defined cell's text
+        , c_res   :: Maybe String -- |The result of the last evaluation of cStr
         , c_uFlag :: Bool -- |Cell has changed, used to check if an input field needs to be refreshed by the frontend
         , c_pos   :: Pos
   } deriving (GHC.Generic, Show, FromJSON, ToJSON)
@@ -44,7 +61,7 @@ data Sheet c =
         , s_ghciThread :: ThreadId
   }
 
-type ExprT v = String
+type ExprT v = CellDef
 
 type VarT = String
 
@@ -66,7 +83,7 @@ type ChanResps = Chan BackendJobResponse
 data BackendJob =
   BackendJob {
     bJob_cName :: String,
-    bJob_cDef :: String,
+    bJob_cDef :: CellDef,
 
     bJob_resBody :: JobResCode -> Maybe String -> StateTy ()
   }
@@ -84,10 +101,12 @@ data JobResCode =
 data Eq pos => Dep pos =
   DepPos pos |
   DepRange pos pos |
-  DepRangeDown pos
+  DepRangeDown pos |
+  DepAll
   deriving (Eq)
 
 instance (Show pos, Eq pos) => Show (Dep pos) where
   show (DepPos pos) = show pos
   show (DepRange from to) = show from ++ " -> " ++ show to
   show (DepRangeDown from) = show from ++ " -> .."
+  show DepAll = "all"

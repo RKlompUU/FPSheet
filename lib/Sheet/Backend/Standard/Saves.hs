@@ -49,7 +49,7 @@ fromXlsxCell simpleImport (row, col) cell =
                   else unCellExpression <$> _cellfExpression <$> cell ^. cellFormula)
             <|> unCellValue <$> cell ^. cellValue
   in CellT {
-    c_str = maybe "failed" id content,
+    c_def = maybe (LetDef "failed") LetDef content,
     c_res = Nothing,
     c_uFlag = False,
     c_pos = (col, row)

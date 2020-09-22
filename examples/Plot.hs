@@ -13,6 +13,8 @@ import PlotBackend
 import Plots
 
 import Control.Monad
+import Control.DeepSeq
+
 import qualified GI.Gdk as Gdk
 import qualified GI.Gtk as Gtk
 import Data.GI.Base
@@ -48,7 +50,7 @@ createMainWindow yss = do
         rect <- Gtk.widgetGetAllocation drawArea  -- size in pixels (Int)
         canvasX <- get rect #width
         canvasY <- get rect #height
-        let dia = renderAxis $ plotdata yss
+        let dia = renderAxis $ linesPlot yss
             w = width dia
             h = height dia
             spec = mkSizeSpec2D (Just $ fromIntegral canvasX) (Just $ fromIntegral canvasY)
@@ -62,15 +64,24 @@ createMainWindow yss = do
 --
 -- Initialize the library, create and show the main window,
 -- finally enter the main loop
-plotLines :: [(String, [Double])] -> IO ()
-plotLines yss = do
+doLinesPlot :: [(String, [Double])] -> IO ()
+doLinesPlot yss = do
+    deepseq yss $ return ()
     Gtk.init Nothing
     win <- createMainWindow yss
     on win #destroy Gtk.mainQuit
     Gtk.widgetShowAll win
     Gtk.main
 
-plotdata yss =
+test :: IO ()
+test = do
+  Gtk.init Nothing
+  win <- createMainWindow undefined
+  Gtk.widgetShowAll win
+  Gtk.main
+
+linesPlot yss =
   let datapoints = map (\(lbl, ys) -> (lbl, zip [1..] ys)) yss
   in r2Axis &~ do
     mapM (\(lbl, points) -> linePlot points (key lbl)) datapoints
+    -- smoothLinePlot

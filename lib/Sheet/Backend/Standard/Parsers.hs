@@ -1,37 +1,27 @@
 module Sheet.Backend.Standard.Parsers where
 
 import Control.Monad
+import Data.Maybe
 import Data.Char
 import ParseLib.Simple hiding ((>>=))
 import Prelude hiding ((<$>), (<*>), (<*), (*>))
-
-import qualified Language.Haskell.Interpreter as HInt
 
 import Sheet.Backend.Standard.Types
 
 
 type SParser a = Parser Char a
 
-data CellDef =
-    LetDef String
-  | Import String
-  | Load   String
-  | IODef  String
-  | LanguageExtension HInt.Extension
-
-parseCellDef :: String -> Maybe CellDef
+parseCellDef :: String -> CellDef
 parseCellDef str =
   let res = parse cellDefParser str
-  in if null res
-      then Nothing
-      else Just $ fst $ head $ res
+  in fst $ head $ res
 
 cellDefParser :: SParser CellDef
 cellDefParser =
       IODef  <$> (symbol '`' *> many anySymbol <* symbol '`')
   <|> Import <$> (token ":m" *> pWhitespace *> many anySymbol)
   <|> Load   <$> (token ":l" *> pWhitespace *> many anySymbol)
-  <|> LanguageExtension <$> (read <$> (token ":e" *> pWhitespace *> many anySymbol))
+  <|> LanguageExtension <$> (token ":e" *> pWhitespace *> many anySymbol)
   <|> LetDef <$> greedy anySymbol
 
 parsePos :: String -> Maybe Pos

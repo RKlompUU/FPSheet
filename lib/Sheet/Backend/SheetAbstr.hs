@@ -51,7 +51,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m c e var 
   revalCell :: c -> m ()
   -- a prior call to 'evalCell' if it resulted in an evaluation. Otherwise
   -- 'getEval' returns 'Nothing'.
-  getEval :: c -> Maybe e
+  getEval :: c -> Maybe String
   -- | 'getText' returns the text contents of a 'Cell'.
   getText :: c -> String
   -- | 'setText' sets textual definition of the cell (note: this does not trigger evaluation)
