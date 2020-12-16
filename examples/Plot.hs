@@ -33,7 +33,7 @@ createMainWindow yss = do
         when (name == Just "Escape") Gtk.mainQuit
         return False
 
-    drawArea <- new Gtk.DrawingArea [#widthRequest := 512, #heightRequest := 512]
+    drawArea <- new Gtk.DrawingArea [#widthRequest := 1000, #heightRequest := 1000]
 
     -- add the depthWidget control and drawArea to the main window
     hbox <- Gtk.boxNew Gtk.OrientationVertical 0

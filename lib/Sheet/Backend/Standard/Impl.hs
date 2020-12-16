@@ -25,6 +25,7 @@ import qualified Data.Set as S
 
 import Sheet.Backend.SheetAbstr
 import Sheet.Backend.Standard.Types
+import Sheet.Backend.Standard.Deps
 
 import Control.Concurrent.Chan
 import Control.Concurrent
@@ -49,6 +50,21 @@ instance Spreadsheet S StateTy C E VAR VAL (Dep Pos) Pos where
     s <- get
     put $ s {s_cells = M.insert (c_pos c) c (s_cells s)}
     return c
+  getDepGraph = walker []
+    where walker :: [Pos] -> [C] -> StateTy [(Pos,[Pos])]
+          walker _ [] = return []
+          walker done cs = do
+            deps <- mapM (\c -> (\deps -> (c_pos c, map c_pos deps))
+                <$> getCellDeps c) cs
+            let done' = done ++ map fst deps
+                next = filter (\p -> not $ any (== p) done')
+                     $ concatMap snd deps
+            nextDeps <- mapM getCell next >>= walker done'
+            return $ deps ++ nextDeps
+  evalCells cs = do
+    cdeps <- getDepGraph cs
+    sortedDeps <- mapM getCell $ resolveDeps cdeps
+    mapM_ (evalCell) sortedDeps
   getSetCells = do
     cells <- s_cells <$> get
     return $ M.elems cells
@@ -72,8 +88,9 @@ instance Spreadsheet S StateTy C E VAR VAL (Dep Pos) Pos where
   reval = do
     s <- get
     put $ s { s_deps = M.empty }
-    cells <- getSetCells
-    mapM_ revalCell cells
+    cs <- getSetCells
+    mapM_ (\c -> setText (getText c) c) cs
+    evalCells cs
   interrupt = do
     s <- get
     liftIO $ throwTo (s_ghciThread s) InterpreterInterrupt
@@ -86,39 +103,25 @@ instance Exception Interrupt
 instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
   evalCell c = do
     let cPos = getCellPos c
-    if (c_uFlag c)
-      then return ()
-      else do
-        feedback <- s_visualFeedback <$> get
-        liftIO $ feedback c CellUpdating
-        -- Set uFlag to true, to prevent infinite recursion into cyclic cell dependencies
-        setCell (c { c_uFlag = True, c_res = Nothing })
-
-        jobChan <- s_jobsChan <$> get
-        rangeableCells <- map (posToRef . getCellPos)
-                      <$> filter (not . null . getText)
-                      <$> getSetCells
-        let (_, e) = preprocessCellDef (c_def c) rangeableCells
-        let j = BackendJob (posToRef cPos) e $
-                  \resCode res -> do
-                    c' <- getCell cPos
-                    setCell (c' { c_res = res })
-                    case resCode of
-                      JobDefFailure -> liftIO $ feedback c' CellFailure
-                      JobShowFailure -> liftIO $ feedback c' CellDefined
-                      _ -> liftIO $ feedback c' CellSuccess
-                    return ()
-
-        liftIO $ writeChan jobChan j
-
-        deps <- getCellDeps c
-        mapM_ evalCell deps
-
-        getCell cPos >>= \c' -> setCell (c' { c_uFlag = False })
-        return ()
-  revalCell c =
-    let str = getText c
-    in setText "" c >>= setText str >>= evalCell
+    feedback <- s_visualFeedback <$> get
+    liftIO $ feedback c CellUpdating
+    -- Set uFlag to true, to prevent infinite recursion into cyclic cell dependencies
+    jobChan <- s_jobsChan <$> get
+    rangeableCells <- map (posToRef . getCellPos)
+                  <$> filter (not . null . getText)
+                  <$> getSetCells
+    let (_, e) = preprocessCellDef (c_def c) rangeableCells
+    let j = BackendJob (posToRef cPos) e $
+              \resCode res -> do
+                c' <- getCell cPos
+                setCell (c' { c_res = res })
+                case resCode of
+                  JobDefFailure -> liftIO $ feedback c' CellFailure
+                  JobShowFailure -> liftIO $ feedback c' CellDefined
+                  _ -> liftIO $ feedback c' CellSuccess
+                return ()
+    liftIO $ writeChan jobChan j
+    return ()
   getEval = c_res
   getText = show . c_def
   setText str c = do

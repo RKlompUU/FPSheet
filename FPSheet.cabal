@@ -30,6 +30,7 @@ library
       Paths_FPSheet
       Sheet.Backend.SheetAbstr
       Sheet.Backend.Standard.Types
+      Sheet.Backend.Standard.Deps
       Sheet.Backend.Standard.Saves
       Sheet.Backend.Standard.Parsers
       Sheet.Backend.Standard.Impl

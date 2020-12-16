@@ -26,10 +26,12 @@ class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m c e var val
   -- | 'getSetCells' returns the list of thus far set cells
   getSetCells :: m [c]
   -- | 'getCell' retrieves a cell from the spreadsheet.
+  getDepGraph :: [c] -> m [(pos,[pos])]
   getCell :: pos -> m c
   -- | 'setCell' sets a 'Cell' c in the spreadsheet at the 'Pos' that must be retrievable from within c.
   -- If a 'Cell' at the given 'Pos' was already present, it is overwritten.
   setCell :: c -> m c
+  evalCells :: [c] -> m ()
   -- | 'reval' reevalutes all Cells
   reval :: m ()
   -- | 'importFile' loads an external format from disk (currently only supports .xlsx)
@@ -48,7 +50,6 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m c e var 
   -- currently evaluated cell.
   -- | 'getEval' returns the evaluation that has been determined during
   evalCell :: c -> m ()
-  revalCell :: c -> m ()
   -- a prior call to 'evalCell' if it resulted in an evaluation. Otherwise
   -- 'getEval' returns 'Nothing'.
   getEval :: c -> Maybe String

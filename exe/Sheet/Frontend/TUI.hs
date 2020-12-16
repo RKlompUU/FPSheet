@@ -281,7 +281,7 @@ handleEventImpl s@(UISheet { uiMode = ModeNormal }) ev = do
 ------
 handleEventImpl s@(UISheet { uiMode = m@(ModeEdit{cellEditor = editField}) }) ev = do
   let apply = do let str = intercalate "" $ getEditContents editField
-                 cells' <- liftIO $ flip execStateT (sheetCells s) $ getCell (sheetCursor s) >>= setText str >>= evalCell
+                 cells' <- liftIO $ flip execStateT (sheetCells s) $ getCell (sheetCursor s) >>= setText str >>= evalCells . flip (:) []
                  return $ s { sheetCells = cells', uiMode = ModeNormal }
   case ev of
     VtyEvent (EvKey KEsc []) -> continue $ s { uiMode = ModeNormal }
