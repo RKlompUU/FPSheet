@@ -37,7 +37,7 @@ data CellDef =
   | Load   String
   | IODef  String
   | LanguageExtension String
-  deriving (GHC.Generic, FromJSON, ToJSON)
+  deriving (GHC.Generic, FromJSON, ToJSON, Eq)
 
 instance Show CellDef where
   show (LetDef str) = str

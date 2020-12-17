@@ -29,12 +29,12 @@ library
     exposed-modules:
         Sheet.Backend.Standard
         Sheet.Backend.Standard.Deps
+        Sheet.Backend.Standard.Parsers
+        Sheet.Backend.Standard.Types
     other-modules:
         Paths_FPSheet
         Sheet.Backend.SheetAbstr
-        Sheet.Backend.Standard.Types
         Sheet.Backend.Standard.Saves
-        Sheet.Backend.Standard.Parsers
         Sheet.Backend.Standard.Impl
     build-depends:
         base >=4.7 && <5,
