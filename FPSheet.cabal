@@ -20,58 +20,72 @@ extra-source-files:
     README.md
 
 source-repository head
-  type: git
-  location: https://github.com/githubuser/FPSheet
+    type: git
+    location: https://github.com/RKlompUU/FPSheet
 
 library
-  exposed-modules:
-      Sheet.Backend.Standard
-  other-modules:
-      Paths_FPSheet
-      Sheet.Backend.SheetAbstr
-      Sheet.Backend.Standard.Types
-      Sheet.Backend.Standard.Deps
-      Sheet.Backend.Standard.Saves
-      Sheet.Backend.Standard.Parsers
-      Sheet.Backend.Standard.Impl
-  hs-source-dirs:
-      lib
-  build-depends:
-      base >=4.7 && <5,
-      aeson,
-      mtl,
-      lens,
-      text,
-      bytestring,
-      xlsx,
-      containers,
-      hint >= 0.9.0,
-      uu-tc,
-      haskell-src-exts >= 1.20.3,
-      haskell-src-exts-util,
-      exceptions
-  default-language: Haskell2010
+    default-language: Haskell2010
+    hs-source-dirs: lib
+    exposed-modules:
+        Sheet.Backend.Standard
+        Sheet.Backend.Standard.Deps
+    other-modules:
+        Paths_FPSheet
+        Sheet.Backend.SheetAbstr
+        Sheet.Backend.Standard.Types
+        Sheet.Backend.Standard.Saves
+        Sheet.Backend.Standard.Parsers
+        Sheet.Backend.Standard.Impl
+    build-depends:
+        base >=4.7 && <5,
+        aeson,
+        mtl,
+        lens,
+        text,
+        bytestring,
+        xlsx,
+        containers,
+        hint >= 0.9.0,
+        uu-tc,
+        haskell-src-exts >= 1.20.3,
+        haskell-src-exts-util,
+        exceptions
+
+test-suite FPSheet-test
+    default-language: Haskell2010
+    hs-source-dirs: test
+    type: exitcode-stdio-1.0
+    main-is: Main.hs
+    other-modules:
+        Paths_FPSheet
+        PropertyTests
+        UnitTests
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N
+    build-depends:
+        FPSheet,
+        base >=4.7 && <5,
+        QuickCheck,
+        hspec
 
 executable FPSheet-exe
-  main-is: Main.hs
-  other-modules:
-      Paths_FPSheet
-      Sheet.Frontend.Types
-      Sheet.Frontend.TUI
-      Sheet.Frontend.CmdParser
-  hs-source-dirs:
-      exe
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      FPSheet,
-      hint >= 0.9.0,
-      base >=4.7 && <5,
-      containers,
-      brick,
-      aeson,
-      vty,
-      terminal-size,
-      text,
-      uu-tc,
-      json
-  default-language: Haskell2010
+    default-language: Haskell2010
+    hs-source-dirs: exe
+    main-is: Main.hs
+    other-modules:
+        Paths_FPSheet
+        Sheet.Frontend.Types
+        Sheet.Frontend.TUI
+        Sheet.Frontend.CmdParser
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N
+    build-depends:
+        FPSheet,
+        hint >= 0.9.0,
+        base >=4.7 && <5,
+        containers,
+        brick,
+        aeson,
+        vty,
+        terminal-size,
+        text,
+        uu-tc,
+        json
