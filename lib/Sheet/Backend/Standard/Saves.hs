@@ -18,14 +18,17 @@ import Data.Aeson
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.Text.Lazy.IO as T
 
+
 saveSheet :: Sheet C -> String -> IO ()
 saveSheet s f = do
   let save = Save (s_cells s)
   T.writeFile f $ T.decodeUtf8 . encode $ save
 
+
 loadSheet :: String -> IO (Maybe Save)
 loadSheet f = do
   decode . T.encodeUtf8 <$> T.readFile f
+
 
 importCells :: String -> Bool -> IO (M.Map Pos C)
 importCells f simpleImport = do
@@ -34,6 +37,7 @@ importCells f simpleImport = do
     $ M.mapKeys swap
     $ M.mapWithKey (fromXlsxCell simpleImport) xlsxC
 
+
 loadXlsxCells :: String -> IO CellMap
 loadXlsxCells f = do
   bs <- L.readFile f
@@ -41,6 +45,7 @@ loadXlsxCells f = do
       mainSheet :: Worksheet
       mainSheet = snd $ head $ xlsx ^. xlSheets
   return $ mainSheet ^. wsCells
+
 
 fromXlsxCell :: Bool -> Pos -> Cell -> C
 fromXlsxCell simpleImport (row, col) cell =
@@ -55,6 +60,7 @@ fromXlsxCell simpleImport (row, col) cell =
     c_pos = (col, row)
   }
 
+
 unCellValue :: CellValue -> String
 unCellValue (CellText x) =
   T.unpack x
@@ -66,6 +72,7 @@ unCellValue (CellRich xs) =
   show xs
 unCellValue (CellError err) =
   show err
+
 
 unCellExpression :: FormulaExpression -> String
 unCellExpression (NormalFormula formula) =

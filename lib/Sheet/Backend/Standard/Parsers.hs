@@ -13,7 +13,8 @@ type SParser a = Parser Char a
 
 parseCellDef :: String -> CellDef
 parseCellDef str =
-  let res = parse cellDefParser str
+  let res = filter (null . snd)
+          $ parse cellDefParser str
   in fst $ head $ res
 
 cellDefParser :: SParser CellDef
@@ -26,7 +27,8 @@ cellDefParser =
 
 parsePos :: String -> Maybe Pos
 parsePos str =
-  let res = parse posParser str
+  let res = filter (null . snd)
+          $ parse posParser str
   in if null res
       then Nothing
       else Just $ fst $ head $ res

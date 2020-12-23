@@ -42,6 +42,7 @@ import Language.Haskell.Exts.Util
 
 import Control.Monad.Catch as MC
 
+
 instance Spreadsheet S StateTy C E VAR VAL (Dep Pos) Pos where
   getCell p = do
     cells <- s_cells <$> get
@@ -95,10 +96,11 @@ instance Spreadsheet S StateTy C E VAR VAL (Dep Pos) Pos where
     s <- get
     liftIO $ throwTo (s_ghciThread s) InterpreterInterrupt
 
+
 data Interrupt = InterpreterInterrupt
     deriving Show
-
 instance Exception Interrupt
+
 
 instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
   evalCell c = do
@@ -165,6 +167,7 @@ instance Cell S StateTy C E VAR VAL (Dep Pos) Pos where
           cellDefHasExpr (IODef  _) = True
           cellDefHasExpr _          = False
 
+
 posInDep :: Pos -> Dep Pos -> Bool
 posInDep _ DepAll = True
 posInDep p (DepPos depAt) = p == depAt
@@ -174,6 +177,7 @@ posInDep p (DepRange depFrom depTo) =
 posInDep p (DepRangeDown depFrom) =
   col p == col depFrom &&
   row p >= row depFrom
+
 
 instance Var VAR Pos where
   posToRef (c,r) =
@@ -206,19 +210,23 @@ instance Expr S StateTy E VAR VAL Pos where
 resetUpdateFields :: S -> S
 resetUpdateFields s = s {s_cells = M.map (\c -> c {c_uFlag = False}) (s_cells s)}
 
+
 -- | Subtraction on 'Pos' variables.
 posSubtr :: Pos -> Pos -> Pos
 posSubtr (r1,c1) (r2,c2) = (r1-r2,c1-c2)
 
+
 -- | Addition on 'Pos' variables.
 posAdd :: Pos -> Pos -> Pos
 posAdd (r1,c1) (r2,c2) = (r1+r2,c1+c2)
+
 
 -- | 'sliceList' grabs a part of list 'xs' that ranges from index 'from' to
 -- index 'to'.
 sliceList :: Int -> Int -> [a] -> [a]
 sliceList from to xs =
   take (to - from + 1) (drop from xs)
+
 
 -- | 'subLists' slices a list 'xs', where each slice has a length of at most
 -- 'i'.
@@ -227,6 +235,7 @@ subLists i xs =
   let is = [0,i..(length xs - 1)]
   in map (\i' -> sliceList i' (i'+i-1) xs) is
 
+
 initSheet :: (BackendJobResponse -> IO ()) -> (C -> CellStatus -> IO ()) -> IO S
 initSheet asyncResFunc visualFeedbackFunc = do
   jobChan <- newChan
@@ -234,11 +243,13 @@ initSheet asyncResFunc visualFeedbackFunc = do
   ghciThreadID <- forkIO (ghciThread jobChan asyncResFunc)
   return $ Sheet M.empty M.empty jobChan visualFeedbackFunc ghciThreadID
 
+
 data IState = IState {
   istate_imports :: [String],
   istate_loads   :: [String],
   istate_exts    :: [I.Extension]
 } deriving Show
+
 
 ghciThread :: ChanJobs -> (BackendJobResponse -> IO ()) -> IO ()
 ghciThread jobs respF = do
@@ -340,16 +351,20 @@ ghciThread jobs respF = do
                 "\tres: " ++ show res ++ "\n"
               return $ (s, BackendJobResponse (bJob_resBody j JobSuccess (Just res)))
 
+
 ghciLog :: String -> IO ()
 ghciLog str = do
   appendFile "/tmp/fpsheet_ghci.log" str
+
 
 appLog :: String -> IO ()
 appLog str = do
   appendFile "/tmp/fpsheet_app.log" str
 
+
 loop :: Monad m => (a -> m a) -> a -> m a
 loop action x = action x >>= loop action
+
 
 preprocessCellDef :: CellDef -> [String] -> ([Dep Pos], CellDef)
 preprocessCellDef (LetDef str) rangeableCells =
@@ -360,6 +375,7 @@ preprocessCellDef (IODef str) rangeableCells =
   in (dependencyRanges, IODef str')
 preprocessCellDef def _ = ([], def)
 
+
 preprocessExprStr :: String -> [String] -> ([Dep Pos], String)
 preprocessExprStr eStr rangeableCells =
   case P.parseExp eStr of
@@ -367,6 +383,7 @@ preprocessExprStr eStr rangeableCells =
     P.ParseOk p ->
       let (dependencyRanges, p') = preprocessExpr p [] rangeableCells
       in (dependencyRanges, P.prettyPrintStyleMode (P.style {P.mode = P.LeftMode}) P.defaultMode p')
+
 
 preprocessExpr :: P.Exp P.SrcSpanInfo -> [String] -> [String] -> ([Dep Pos], P.Exp P.SrcSpanInfo)
 preprocessExpr e@(P.EnumFromTo _ enumFrom enumTo) unfree rangeableCells =
@@ -440,20 +457,25 @@ preprocessExpr (P.Lambda l patterns e) unfree rangeableCells =
   in (rs, P.Lambda l patterns e')
 preprocessExpr e _ _ = ([], e)
 
+
 unName :: P.Name l -> String
 unName (P.Ident _ n) = n
 unName (P.Symbol _ n) = n
+
 
 posRef :: P.Exp P.SrcSpanInfo -> Maybe Pos
 posRef (P.Var _ (P.UnQual _ (P.Ident _ str))) = parsePos str
 posRef _ = Nothing
 
+
 rangePos :: Pos -> Pos -> [Pos]
 rangePos (c1,r1) (c2,r2) =
   [(c, r) | c <- [c1..c2], r <- [r1..r2]]
 
+
 col :: Pos -> Int
 col = fst
+
 
 row :: Pos -> Int
 row = snd

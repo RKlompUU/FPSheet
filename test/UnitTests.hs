@@ -11,11 +11,36 @@ allUnitTests :: IO ()
 allUnitTests = do
   resolveDepsTests
   parseCellDefTests
+  parsePosTests
+
+
+parsePosTests :: IO ()
+parsePosTests = hspec $ do
+  describe "parse cell positions" $ do
+    it "parseable" $ do
+      parsePos "a1" `shouldBe` Just (1, 1)
+      parsePos "a2" `shouldBe` Just (1, 2)
+      parsePos "b1" `shouldBe` Just (2, 1)
+      parsePos "b2" `shouldBe` Just (2, 2)
+      parsePos "b10" `shouldBe` Just (2, 10)
+      parsePos "aa10" `shouldBe` Just (27, 10)
+      parsePos "ab10" `shouldBe` Just (28, 10)
+      parsePos "ab11" `shouldBe` Just (28, 11)
+    it "not parseable (empty)" $ do
+      parsePos "" `shouldBe` Nothing
+    it "not parseable (wrong order)" $ do
+      parsePos "1a" `shouldBe` Nothing
+    it "not parseable (missing row)" $ do
+      parsePos "a" `shouldBe` Nothing
+    it "not parseable (missing col)" $ do
+      parsePos "1" `shouldBe` Nothing
+    it "not parseable (bad trailing character)" $ do
+      parsePos "a1a" `shouldBe` Nothing
 
 
 parseCellDefTests :: IO ()
 parseCellDefTests = hspec $ do
-  describe "parse cell defenitions" $ do
+  describe "parse cell definitions" $ do
     it "let def" $ do
       parseCellDef "x = 4" `shouldBe` LetDef "x = 4"
       parseCellDef "x = 'a'" `shouldBe` LetDef "x = 'a'"
