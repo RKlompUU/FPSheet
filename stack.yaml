@@ -41,6 +41,7 @@ packages:
 extra-deps:
 - hint-0.9.0
 - uu-tc-2015.1.1
+- extra-1.7.9
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

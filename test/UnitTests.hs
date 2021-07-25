@@ -2,6 +2,12 @@ module UnitTests where
 
 import Test.Hspec
 
+import Control.Monad.Trans.State.Lazy
+import Control.Monad.IO.Class
+import qualified Control.Concurrent.SSem as Sem
+import Control.Concurrent.MVar
+
+import Sheet.Backend.Standard
 import Sheet.Backend.Standard.Deps
 import Sheet.Backend.Standard.Parsers
 import Sheet.Backend.Standard.Types
@@ -12,6 +18,36 @@ allUnitTests = do
   resolveDepsTests
   parseCellDefTests
   parsePosTests
+  evalTests
+
+
+evalRefState :: MVar S -> StateTy a -> IO a
+evalRefState shRef stFunc = do
+  sh <- takeMVar shRef
+  (res, sh') <- liftIO $ runStateT stFunc sh
+  putMVar shRef sh'
+  return res
+
+
+evalTests :: IO ()
+evalTests = do
+  sem <- Sem.new 0
+  shRef <- newMVar (undefined :: S)
+  let resChan = \j -> evalRefState shRef (bJobRes j)
+                   >> liftIO (Sem.signal sem)
+      visChan = \c st -> return ()
+  sh <- initSheet resChan visChan
+  swapMVar shRef sh
+  hspec $ do
+    describe "expression evaluation (might block indefinitely if bugged)" $ do
+      it "basic" $ do
+        evalRefState shRef $ do
+          c <- getCell (1, 1) >>= setText "4"
+          evalCells [c]
+        Sem.waitN sem 1
+        c' <- evalRefState shRef $ getCell (1, 1)
+        c_def c' `shouldBe` LetDef "4"
+        c_res c' `shouldBe` Just "4"
 
 
 parsePosTests :: IO ()

@@ -42,6 +42,7 @@ class (MonadState s m, Var var pos, Expr s m e var val pos, Cell s m c e var val
   load :: String -> m ()
   interrupt :: m ()
 
+
 -- | The 'Cell' API interface supplies cell manipulation functions.
 class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m c e var val dep pos | c -> e, c -> dep, c -> var, var -> m, e -> m where
   -- | 'evalCell' tries to evaluate the cell's content, in the context of the current spreadsheet's state.
@@ -66,9 +67,11 @@ class (MonadState s m, Var var pos, Expr s m e var val pos) => Cell s m c e var 
   delCellDep :: c -> dep -> m ()
   getCellDeps :: c -> m [c]
 
+
 -- | The 'Expr' API interface supplies expression manipulation functions.
 class (MonadState s m, Var var pos) => Expr s m e var val pos | e -> val, e -> pos, e -> var, var -> m, e -> m where
   refsInExpr :: e -> S.Set pos
+
 
 -- | The 'Var' API interface is currently purely used to allow for different
 -- kind of variable encodings within languages. Perhaps this part of the
